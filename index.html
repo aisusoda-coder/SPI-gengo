@@ -108,8 +108,9 @@
   <!-- 設定画面 -->
   <section id="setup">
     <div class="card" id="installCard"></div>
+    <div class="card hide" id="resumeCard"></div>
     <div class="card">
-      <h2>出題カテゴリ</h2>
+      <h2 id="catTitle">出題カテゴリ</h2>
       <div class="cats" id="cats"></div>
       <div class="row">
         <span class="label">出題数</span>
@@ -121,19 +122,36 @@
         <label class="toggle" style="margin-left:6px"><input type="checkbox" id="shuffle" checked> シャッフル</label>
       </div>
       <div class="row">
+        <span class="label">制限時間</span>
+        <div class="seg" id="limitseg">
+          <button data-l="0" class="on">なし</button>
+          <button data-l="20">20秒</button>
+          <button data-l="30">30秒</button>
+          <button data-l="45">45秒</button>
+        </div>
+        <label class="toggle" style="margin-left:6px"><input type="checkbox" id="autoNext"> 自動で次へ</label>
+      </div>
+      <div class="row">
         <button class="btn" id="start">スタート</button>
         <button class="btn ghost" id="startWeak">苦手優先で出題</button>
         <span class="small" id="count"></span>
       </div>
       <div class="row">
-        <button class="btn ghost" id="startWeakList">★ 苦手リストを復習</button>
+        <button class="btn ghost" id="startWeakList">★ 今日の復習</button>
+        <button class="btn ghost" id="unseenBtn">🆕 未出題優先</button>
         <span class="small" id="weakCount"></span>
       </div>
+    </div>
+    <div class="card">
+      <h2>📝 本番フル模試</h2>
+      <p class="small" style="margin:0 0 10px">選択中のカテゴリから30問・各30秒・通しで挑戦。終了後に目安レベルを表示します。</p>
+      <button class="btn" id="mockBtn" style="width:100%">模試スタート（30問・各30秒）</button>
     </div>
     <div class="card">
       <h2>分野ごとに出題（1タップで開始）</h2>
       <div id="catLaunch"></div>
     </div>
+    <div class="card"><button class="btn ghost" id="cheatBtn" style="width:100%">📖 言い換えチートシート（暗記モード）</button></div>
     <div class="card" id="statsCard"></div>
     <div class="row">
       <button class="btn ghost" id="exportBtn">記録を書き出し</button>
@@ -184,6 +202,18 @@
         <button class="btn ghost" id="wrongOnly">間違えた問題だけ</button>
         <button class="btn ghost" id="home">カテゴリ選択へ</button>
       </div>
+    </div>
+  </section>
+
+  <!-- チートシート（暗記モード） -->
+  <section id="cheat" class="hide">
+    <div class="card">
+      <div class="meta" style="margin-bottom:12px">
+        <h2 style="margin:0">📖 言い換えチートシート</h2>
+        <button class="btn ghost" id="cheatHome" style="padding:7px 14px">閉じる</button>
+      </div>
+      <p class="small" style="margin:0 0 12px">SPI言語の「型」を一覧で暗記。⇄や≒の右側を覚えるのが最短です。</p>
+      <div id="cheatBody"></div>
     </div>
   </section>
 </div>
@@ -498,26 +528,153 @@ function _opts(correct,pool,n){
   for(const d of pool){ if(set.size>=n) break; if(d&&d!==correct) set.add(d); }
   const arr=_shuf([...set]); return {o:arr,a:arr.indexOf(correct)};
 }
-function genSyn(){ const all=BANK_SYN.map(p=>p[1]); return BANK_SYN.map(([w,s])=>{ const{o,a}=_opts(s,_shuf(all.filter(x=>x!==s))); return{c:"同義語",q:`「${w}」に最も近い語は？`,o,a,e:`${w} ≒ <b>${s}</b>。`}; }); }
-function genAnt(){ const all=BANK_ANT.map(p=>p[1]); return BANK_ANT.map(([w,s])=>{ const{o,a}=_opts(s,_shuf(all.filter(x=>x!==s))); return{c:"反義語",q:`「${w}」の反対語は？`,o,a,e:`${w} ⇔ <b>${s}</b>。`}; }); }
-function genRel(){ const types=Object.keys(BANK_REL), fmt=p=>`${p[0]}：${p[1]}`, out=[]; types.forEach(t=>{ const pairs=BANK_REL[t], others=[]; types.forEach(u=>{ if(u!==t) BANK_REL[u].forEach(p=>others.push(fmt(p))); }); pairs.forEach(p=>{ const same=pairs.filter(q=>q!==p).map(fmt); if(!same.length) return; const correct=_shuf(same)[0]; const{o,a}=_opts(correct,_shuf(others)); out.push({c:"二語の関係",q:`${fmt(p)} と同じ関係は？`,o,a,e:`<b>${t}</b>の関係。${fmt(p)} と ${correct} が同じ。`}); }); }); return out; }
-function genJK(){ const desc={"似た意味":"似た意味の漢字を重ねる","反対":"反対の意味の漢字","主述":"主語+述語","動目":"動詞+目的語","修飾":"前が後ろを修飾"}; const pats=Object.keys(BANK_JK), out=[]; pats.forEach(pt=>{ const words=BANK_JK[pt], others=[]; pats.forEach(u=>{ if(u!==pt) BANK_JK[u].forEach(w=>others.push(w)); }); words.forEach(w=>{ const same=words.filter(x=>x!==w); const correct=_shuf(same)[0]; const{o,a}=_opts(correct,_shuf(others)); out.push({c:"熟語の成り立ち",q:`「${w}」と成り立ちが同じものは？`,o,a,e:`${w} は<b>${desc[pt]}</b>。${correct} も同じ。`}); }); }); return out; }
+/* ---- 紛らわしい誤答づくり：漢字かぶり優先＋類義/対義の混同を防ぐ ---- */
+const SYN_ADJ={}; BANK_SYN.forEach(([a,b])=>{(SYN_ADJ[a]=SYN_ADJ[a]||new Set()).add(b);(SYN_ADJ[b]=SYN_ADJ[b]||new Set()).add(a);});
+const _synOf=w=>SYN_ADJ[w]?[...SYN_ADJ[w]]:[];
+const _WORDPOOL=[...new Set([].concat(...BANK_SYN,...BANK_ANT))];
+function _kanji(s){return [...String(s)].filter(c=>/[㐀-鿿]/.test(c));}
+function _share(a,b){const B=new Set(_kanji(b));return _kanji(a).some(c=>B.has(c));}
+/* correct=正解, prompt=問題の語, seeds=優先で入れたい引っかけ, banned=正解と紛らわしく除外したい語 */
+function _hardOpts(correct,prompt,seeds,banned,n){
+  n=n||5;
+  const out=[correct], bad=new Set([correct,prompt,...(banned||[])]);
+  for(const s of (seeds||[])){ if(out.length>=n)break; if(s&&!bad.has(s)){out.push(s);bad.add(s);} }
+  const cand=_WORDPOOL.filter(x=>!bad.has(x)&&!out.includes(x));
+  const near=_shuf(cand.filter(x=>_share(x,correct)||(prompt&&_share(x,prompt))));
+  const far=_shuf(cand.filter(x=>!near.includes(x)));
+  for(const x of near.concat(far)){ if(out.length>=n)break; out.push(x); }
+  const arr=_shuf(out); return {o:arr,a:arr.indexOf(correct)};
+}
+/* ④ダミーを問題語と漢字がかぶるもの優先に並べてから選ぶ（消去法を効きにくく） */
+function _optsBias(correct,pool,biasStr,n){
+  const near=_shuf(pool.filter(x=>_share(x,biasStr)));
+  const far=_shuf(pool.filter(x=>!near.includes(x)));
+  return _opts(correct, near.concat(far), n);
+}
+function genSyn(){
+  return BANK_SYN.map(([w,s])=>{
+    // 除外: w自身の類義語と s自身の類義語（＝もう一つの正解になりうる語）
+    const banned=[..._synOf(w),..._synOf(s)];
+    const{o,a}=_hardOpts(s,w,[],banned);
+    return{c:"同義語",q:`「${w}」に最も近い語は？`,o,a,e:`${w} ≒ <b>${s}</b>。`};
+  });
+}
+function genAnt(){
+  return BANK_ANT.map(([w,s])=>{
+    // 引っかけ: wの類義語（似た意味＝反対語ではない）。除外: sの類義語（こちらも反対語になりうる）
+    const seeds=_synOf(w), banned=_synOf(s);
+    const{o,a}=_hardOpts(s,w,seeds,banned);
+    return{c:"反義語",q:`「${w}」の反対語は？`,o,a,e:`${w} ⇔ <b>${s}</b>。`};
+  });
+}
+function genRel(){ const types=Object.keys(BANK_REL), fmt=p=>`${p[0]}：${p[1]}`, out=[]; types.forEach(t=>{ const pairs=BANK_REL[t], others=[]; types.forEach(u=>{ if(u!==t) BANK_REL[u].forEach(p=>others.push(fmt(p))); }); pairs.forEach(p=>{ const same=pairs.filter(q=>q!==p).map(fmt); if(!same.length) return; const correct=_shuf(same)[0]; const{o,a}=_optsBias(correct,others,fmt(p)); out.push({c:"二語の関係",q:`${fmt(p)} と同じ関係は？`,o,a,e:`<b>${t}</b>の関係。${fmt(p)} と ${correct} が同じ。`}); }); }); return out; }
+function genJK(){ const desc={"似た意味":"似た意味の漢字を重ねる","反対":"反対の意味の漢字","主述":"主語+述語","動目":"動詞+目的語","修飾":"前が後ろを修飾"}; const pats=Object.keys(BANK_JK), out=[]; pats.forEach(pt=>{ const words=BANK_JK[pt], others=[]; pats.forEach(u=>{ if(u!==pt) BANK_JK[u].forEach(w=>others.push(w)); }); words.forEach(w=>{ const same=words.filter(x=>x!==w); const correct=_shuf(same)[0]; const{o,a}=_optsBias(correct,others,w); out.push({c:"熟語の成り立ち",q:`「${w}」と成り立ちが同じものは？`,o,a,e:`${w} は<b>${desc[pt]}</b>。${correct} も同じ。`}); }); }); return out; }
 function genMean(){ const allM=BANK_MEAN.map(e=>e.m); return BANK_MEAN.map(e=>{ const{o,a}=_opts(e.m,(e.w||[]).concat(_shuf(allM.filter(m=>m!==e.m)))); return{c:"語句の意味",q:`「${e.t}」の意味は？`,o,a,e:`＝<b>${e.m}</b>。`}; }); }
+/* ===== ⑤コンテンツ増量（生成前にバンク・固定問題を追加） ===== */
+BANK_SYN.push(["該当","相当"],["逸脱","脱線"],["顕著","明瞭"],["懇切","丁寧"],["猶予","延期"],["折衝","交渉"],["陳腐","平凡"],["奇抜","斬新"],["円滑","順調"],["閑静","静寂"],["難点","欠点"],["熟練","熟達"]);
+BANK_ANT.push(["優遇","冷遇"],["善意","悪意"],["拡張","縮小"],["全体","部分"],["軽視","重視"],["拡散","収束"],["豊作","凶作"],["祖先","子孫"],["浪費","節約"],["定例","臨時"],["既知","未知"],["濃縮","希釈"]);
+BANK_JK["似た意味"].push("削減","倉庫","豊潤");
+BANK_JK["反対"].push("緩急","虚実","寒暖");
+BANK_JK["主述"].push("私立","民営","官製");
+BANK_JK["動目"].push("防火","着陸","作詞","登壇");
+BANK_JK["修飾"].push("微熱","軽食","新緑","再会");
+BANK_MEAN.push(
+  {t:"琴線に触れる",m:"心の奥の感動を呼び起こす",w:["怒りを買う"]},
+  {t:"凡庸",m:"平凡で取り柄がないこと",w:["並外れて優れること"]},
+  {t:"吝嗇",m:"ひどくけちなこと",w:["気前がよいこと"]},
+  {t:"鷹揚",m:"ゆったり落ち着いていること",w:["せかせかと慌ただしいこと"]},
+  {t:"逐一",m:"一つ残らず順を追って",w:["大ざっぱに"]},
+  {t:"忌憚のない",m:"遠慮のない",w:["とても丁寧な"]},
+  {t:"卑近な例",m:"身近でわかりやすい例",w:["下品な例"]},
+  {t:"枚挙にいとまがない",m:"数えきれないほど多い",w:["数えるほどしかない"]},
+  {t:"したり顔",m:"得意げな顔つき",w:["申し訳なさそうな顔"]},
+  {t:"知悉",m:"知り尽くしていること",w:["少しだけ知ること"]}
+);
+DATA.push(
+  {c:"語句の用法",q:"机の上_に_本がある ─ 同じ用法は？",o:["庭に花が咲く","駅に向かう","三時に会う","君に頼む","水に流す"],a:0,e:"例文の「に」＝<b>存在の場所</b>。庭に花が咲く も場所。駅に＝方向／三時に＝時／君に＝対象／水に＝変化。"},
+  {c:"語句の用法",q:"これは本_だ_ ─ 同じ用法は？",o:["友達だ","静かだ","読んだ","泳いだ","遊んだ"],a:0,e:"例文の「だ」＝<b>断定の助動詞</b>。友達だ も断定。静かだ＝形容動詞の語尾／読んだ・泳いだ・遊んだ＝過去の「だ」。"},
+  {c:"長文",q:"【本文】科学技術の進歩は生活を便利にした。しかし、それが人間の幸福に直結するとは限らない。 ─ 要旨は？",o:["技術の進歩は便利だが幸福に直結するとは限らない","技術の進歩は不要である","便利さこそが幸福だ","技術は人を必ず幸福にする"],a:0,e:"<b>「しかし」の後ろが主張</b>。便利さ＝幸福ではない、と述べている。"},
+  {c:"長文",q:"【本文】失敗を隠そうとすれば、かえって信頼を失う。正直に認めて謝るほうが、長い目で見れば信用を保てる。 ─ 筆者の主張は？",o:["失敗は隠さず正直に認めるほうがよい","失敗は決して認めるべきでない","信頼は一度失えば戻らない","謝罪に意味はない"],a:0,e:"全体で「隠す より 正直に認める」を主張。言い過ぎ・本文にない選択肢を切る。"},
+  {c:"並べ替え",q:"［ア:しかし間に合わなかった ／ イ:急いで駅へ向かった ／ ウ:寝坊してしまった］正しい順序は？",o:["ウ→イ→ア","イ→ウ→ア","ア→ウ→イ","ウ→ア→イ"],a:0,e:"原因(寝坊)→行動(駅へ)→逆接の結果(間に合わず)。「しかし」は最後。"}
+);
 const GEN=[].concat(genSyn(),genAnt(),genRel(),genJK(),genMean());
-const ALL=DATA.concat(GEN);
+
+/* ===== ④非言語（数的処理）※答えはすべて手計算で検算済み ===== */
+const NONVERBAL=[
+/* --- 推論 --- */
+{c:"推論",q:"A＞B、B＞C のとき、必ず正しいものは？",o:["A＞C","C＞A","A＝C","判断できない"],a:0,e:"大小関係は<b>推移する</b>：A＞B＞C なので A＞C。"},
+{c:"推論",q:"成績は 甲＞乙、乙＞丙、丙＞丁。1位は誰か？",o:["甲","乙","丙","丁"],a:0,e:"甲＞乙＞丙＞丁。1位は<b>甲</b>。"},
+{c:"推論",q:"身長は a＞c、c＞b。低い順で2番目は？",o:["c","b","a","判断できない"],a:0,e:"低い順は b＜c＜a。2番目は<b>c</b>。"},
+{c:"推論",q:"ある店の定休日は月・水・金。火曜日の2日後は営業しているか？",o:["営業している","定休日","半休","判断できない"],a:0,e:"火曜の2日後＝<b>木曜</b>。定休は月水金なので営業している。"},
+{c:"推論",q:"P・Q・R・Sの4人が徒競走。RはPより速く、PはQより速く、QはSより速い。最も速いのは？",o:["R","P","Q","S"],a:0,e:"R＞P＞Q＞S。最も速いのは<b>R</b>。"},
+/* --- 割合と比 --- */
+{c:"割合と比",q:"定価2000円の品を15%引きで買うといくら？",o:["1700円","1850円","1600円","300円"],a:0,e:"2000×(1−0.15)=2000×0.85=<b>1700円</b>。"},
+{c:"割合と比",q:"ある数の20%が30である。元の数は？",o:["150","60","6","1500"],a:0,e:"30÷0.2=<b>150</b>。"},
+{c:"割合と比",q:"男子18人・女子12人のクラスで、男子の割合は？",o:["60%","40%","18%","150%"],a:0,e:"18÷(18+12)=18÷30=<b>0.6＝60%</b>。"},
+{c:"割合と比",q:"40個を 3:5 の比で分けると、多いほうは何個？",o:["25個","15個","24個","8個"],a:0,e:"全体8等分のうち5。40×5/8=<b>25個</b>。"},
+{c:"割合と比",q:"6:4 ＝ 9:□ のとき、□は？",o:["6","8","12","3"],a:0,e:"6:4＝3:2。9は3の3倍なので□=2×3=<b>6</b>。"},
+/* --- 損益算 --- */
+{c:"損益算",q:"原価1000円の品に2割の利益を見込んだ定価は？",o:["1200円","1020円","800円","1100円"],a:0,e:"1000×(1+0.2)=<b>1200円</b>。"},
+{c:"損益算",q:"定価1500円の品を2割引で売ると売価は？",o:["1200円","1300円","1250円","300円"],a:0,e:"1500×(1−0.2)=1500×0.8=<b>1200円</b>。"},
+{c:"損益算",q:"原価800円の品を1000円で売った。利益率（原価に対する）は？",o:["25%","20%","2.5%","200%"],a:0,e:"利益200円÷原価800円=<b>0.25＝25%</b>。"},
+{c:"損益算",q:"仕入れ400円の品に、仕入れの5割増の定価をつけた。定価は？",o:["600円","450円","420円","200円"],a:0,e:"400×(1+0.5)=<b>600円</b>。"},
+/* --- 速さ --- */
+{c:"速さ",q:"時速60kmで2.5時間進むと何km？",o:["150km","120km","24km","150m"],a:0,e:"距離＝速さ×時間＝60×2.5=<b>150km</b>。"},
+{c:"速さ",q:"120kmを2時間で進んだときの時速は？",o:["時速60km","時速40km","時速240km","時速30km"],a:0,e:"速さ＝距離÷時間＝120÷2=<b>時速60km</b>。"},
+{c:"速さ",q:"分速80mで600m歩くと何分かかる？",o:["7.5分","8分","48分","7分"],a:0,e:"時間＝距離÷速さ＝600÷80=<b>7.5分</b>。"},
+{c:"速さ",q:"時速72kmは秒速何mか？",o:["秒速20m","秒速72m","秒速12m","秒速200m"],a:0,e:"72km/h＝72000m÷3600秒=<b>秒速20m</b>。"},
+{c:"速さ",q:"同じ道を行きは時速12km、帰りは時速4kmで往復した。往復の平均時速は？",o:["時速6km","時速8km","時速16km","時速48km"],a:0,e:"平均速度は<b>調和平均</b>：2×12×4÷(12+4)=96÷16=<b>時速6km</b>（単純平均8kmは誤り）。"},
+/* --- 場合の数 --- */
+{c:"場合の数",q:"5人から2人を選ぶ組合せは何通り？",o:["10通り","20通り","25通り","7通り"],a:0,e:"C(5,2)=5×4÷2=<b>10通り</b>。"},
+{c:"場合の数",q:"3人を1列に並べる並べ方は何通り？",o:["6通り","3通り","9通り","27通り"],a:0,e:"3!=3×2×1=<b>6通り</b>。"},
+{c:"場合の数",q:"5人から会長と副会長を1人ずつ選ぶ選び方は何通り？",o:["20通り","10通り","25通り","9通り"],a:0,e:"順番が区別されるので 5×4=<b>20通り</b>（順列）。"},
+{c:"場合の数",q:"コインを3回投げたときの表裏の出方は何通り？",o:["8通り","6通り","3通り","9通り"],a:0,e:"各回2通りで 2×2×2=<b>8通り</b>。"},
+{c:"場合の数",q:"4種類の品から3種類を選ぶ組合せは何通り？",o:["4通り","12通り","24通り","1通り"],a:0,e:"C(4,3)=C(4,1)=<b>4通り</b>。"},
+/* --- 確率 --- */
+{c:"確率",q:"サイコロを1回振って偶数が出る確率は？",o:["1/2","1/3","1/6","2/3"],a:0,e:"偶数は2・4・6の3通り。3/6=<b>1/2</b>。"},
+{c:"確率",q:"コイン2枚を投げて両方とも表になる確率は？",o:["1/4","1/2","1/3","3/4"],a:0,e:"1/2×1/2=<b>1/4</b>。"},
+{c:"確率",q:"赤玉3個・白玉2個から1個引くとき、赤玉の確率は？",o:["3/5","2/5","1/5","3/2"],a:0,e:"赤3÷全体5=<b>3/5</b>。"},
+{c:"確率",q:"サイコロを1回振って3以上の目が出る確率は？",o:["2/3","1/2","1/3","5/6"],a:0,e:"3・4・5・6の4通り。4/6=<b>2/3</b>。"},
+{c:"確率",q:"サイコロ2個を振って出目の和が7になる確率は？",o:["1/6","1/12","7/36","1/9"],a:0,e:"和7は(1,6)(2,5)(3,4)(4,3)(5,2)(6,1)の6通り。6/36=<b>1/6</b>。"},
+/* --- 集合 --- */
+{c:"集合",q:"40人のクラスで英語好き25人・数学好き18人・両方好き10人。どちらも好きでない人は？",o:["7人","3人","13人","10人"],a:0,e:"少なくとも一方＝25+18−10=33人。40−33=<b>7人</b>。"},
+{c:"集合",q:"50人中、犬を飼う人30・猫を飼う人20・両方12。少なくとも一方を飼う人は？",o:["38人","50人","12人","2人"],a:0,e:"30+20−12=<b>38人</b>（重複の12を1回引く）。"},
+{c:"集合",q:"100人中、A紙購読60・B紙購読45・両方25。どちらも読まない人は？",o:["20人","30人","80人","25人"],a:0,e:"一方以上＝60+45−25=80人。100−80=<b>20人</b>。"},
+];
+
+/* ===== ⑤長文：1つの文章に複数設問（本番形式） ===== */
+const LONGSETS=[
+{c:"長文",q:"【長文A】近年、リモートワークが普及した。通勤時間がなくなる一方で、仕事と私生活の境界が曖昧になりやすいという課題も指摘されている。 ─ 利点として挙げられているのは？",o:["通勤時間がなくなること","給料が上がること","集中力が高まること","残業が必ず減ること"],a:0,e:"本文は利点として<b>通勤時間がなくなること</b>のみを挙げている。本文にない選択肢を切る。"},
+{c:"長文",q:"【長文A】近年、リモートワークが普及した。通勤時間がなくなる一方で、仕事と私生活の境界が曖昧になりやすいという課題も指摘されている。 ─ 指摘されている課題は？",o:["仕事と私生活の境界が曖昧になること","通信費がかかること","孤独になること","評価が下がること"],a:0,e:"課題として<b>仕事と私生活の境界が曖昧になる</b>ことを挙げている。"},
+{c:"長文",q:"【長文B】外来語の増加を嘆く声がある。しかし言語は常に他言語の影響を受けて豊かになってきた。重要なのは排除ではなく、使い分ける力を養うことだ。 ─ 筆者の立場は？",o:["排除よりも使い分ける力を養うことが大事だ","外来語は使うべきでない","日本語は乱れている","外来語をもっと増やすべきだ"],a:0,e:"逆接「しかし」以降が主張。<b>排除ではなく使い分け</b>を重視している。"},
+{c:"長文",q:"【長文B】外来語の増加を嘆く声がある。しかし言語は常に他言語の影響を受けて豊かになってきた。重要なのは排除ではなく、使い分ける力を養うことだ。 ─ 「言語は豊かになってきた」理由は？",o:["他言語の影響を受けてきたから","話者が多いから","文法が単純だから","文字の種類が多いから"],a:0,e:"本文に「<b>他言語の影響を受けて</b>豊かになってきた」と明記。"},
+];
+
+/* ②⑤ 重複文言を排除して結合（固定＋自動生成＋非言語＋長文） */
+const ALL=(()=>{ const seen=new Set();
+  return [].concat(DATA, GEN, NONVERBAL, LONGSETS).filter(d=>{ if(seen.has(d.q)) return false; seen.add(d.q); return true; });
+})();
 
 /* ===== ロジック ===== */
 const $=s=>document.querySelector(s);
 const CATS=[...new Set(ALL.map(d=>d.c))];
 let selected=new Set(CATS), pool=[], idx=0, answered=false, score=0, wrong=[], numChoice=0, streak=0, qStart=0, totalTime=0, timerInt=null;
-const CAT_COLORS={"多義語":"#4f8cff","二語の関係":"#9b6bff","熟語の成り立ち":"#1fb6a6","同義語":"#2ec27e","反義語":"#ff8a3d","語句の意味":"#e0556e","語句の用法":"#d6a400","空欄補充":"#3aa0ff","並べ替え":"#8b86ff","長文":"#ff6b9d"};
+let limitSec=0, limitTO=null, autoNext=false, advanceTok=0, mockMode=false;   // ①制限時間 ⑧自動で次へ ⑥模試
+const uiLimit=()=>{ const b=document.querySelector("#limitseg .on"); return b? +b.dataset.l : 0; };
+const today=()=>Math.floor(Date.now()/86400000);             // 経過日数（SRS用）
+const CAT_COLORS={"多義語":"#4f8cff","二語の関係":"#9b6bff","熟語の成り立ち":"#1fb6a6","同義語":"#2ec27e","反義語":"#ff8a3d","語句の意味":"#e0556e","語句の用法":"#d6a400","空欄補充":"#3aa0ff","並べ替え":"#8b86ff","長文":"#ff6b9d",
+  "推論":"#0ea5e9","割合と比":"#14b8a6","損益算":"#f59e0b","速さ":"#8b5cf6","場合の数":"#ec4899","確率":"#ef4444","集合":"#22c55e"};
+/* 非言語カテゴリ（言語/非言語フィルタ用） */
+const NV_CATS=["推論","割合と比","損益算","速さ","場合の数","確率","集合"];
 
 function renderCats(){
+  const ct=$("#catTitle"); if(ct) ct.textContent=`出題カテゴリ（全${ALL.length}問）`;
+  const verbalCats=CATS.filter(c=>!NV_CATS.includes(c));
+  const nvCats=CATS.filter(c=>NV_CATS.includes(c));
   const box=$("#cats"); box.innerHTML="";
-  const all=document.createElement("div");
-  all.className="chip on"; all.textContent="全部";
-  all.onclick=()=>{ selected=new Set(CATS); syncChips(); };
-  box.appendChild(all);
+  const quick=(label,set)=>{ const el=document.createElement("div"); el.className="chip"; el.textContent=label; el.onclick=()=>{ selected=new Set(set); syncChips(); }; box.appendChild(el); };
+  quick("全部", CATS);
+  if(nvCats.length){ quick("言語のみ", verbalCats); quick("非言語のみ", nvCats); }
   CATS.forEach(c=>{
     const el=document.createElement("div");
     el.className="chip on"; el.textContent=`${c} (${ALL.filter(d=>d.c===c).length})`;
@@ -534,8 +691,13 @@ function syncChips(){
 }
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
 
+function shuffleChoices(d){
+  const order=d.o.map((_,i)=>i); shuffle(order);
+  return {...d, o:order.map(i=>d.o[i]), a:order.indexOf(d.a)};
+}
 function start(list, keepOrder){
-  pool=list.slice();
+  mockMode=false; limitSec=uiLimit();              // 通常スタートはUIの制限時間に同期
+  pool=list.map(shuffleChoices);   // 選択肢を毎回シャッフル→正解が「ア」に偏らない
   if(!keepOrder && $("#shuffle").checked) shuffle(pool);
   if(numChoice>0 && pool.length>numChoice) pool=pool.slice(0,numChoice);
   idx=0; score=0; wrong=[]; streak=0; totalTime=0;
@@ -561,34 +723,61 @@ function showQ(){
   $("#exp").classList.remove("show");
   $("#nextrow").classList.add("hide");
   $("#score").textContent=`正解 ${score} / ${idx}　🔥${streak}`;
+  advanceTok++;                                    // ⑧自動で次へ：保留中タイマーを無効化
   qStart=Date.now();
-  clearInterval(timerInt);
-  timerInt=setInterval(()=>{ $("#timer").textContent="⏱ "+((Date.now()-qStart)/1000).toFixed(1)+"秒"; },100);
+  clearInterval(timerInt); clearTimeout(limitTO);
+  if(limitSec>0){                                  // ①制限時間モード：残り時間カウントダウン
+    const end=qStart+limitSec*1000;
+    timerInt=setInterval(()=>{ const r=Math.max(0,(end-Date.now())/1000); $("#timer").textContent="⏳ 残り"+r.toFixed(1)+"秒"; },100);
+    limitTO=setTimeout(timeUp, limitSec*1000);
+  }else{
+    timerInt=setInterval(()=>{ $("#timer").textContent="⏱ "+((Date.now()-qStart)/1000).toFixed(1)+"秒"; },100);
+  }
+  saveSession();                                   // ⑦この問題の手前まで（回答前）の状態を保存→再開時に二重採点しない
 }
 function choose(i){
   if(answered) return; answered=true;
   const d=pool[idx];
-  const btns=$("#opts").querySelectorAll(".opt");
-  btns.forEach((b,k)=>{ b.disabled=true; if(k===d.a)b.classList.add("ok"); if(k===i&&i!==d.a)b.classList.add("ng"); });
-  clearInterval(timerInt);
-  totalTime += Date.now()-qStart;
-  $("#timer").textContent="⏱ "+((Date.now()-qStart)/1000).toFixed(1)+"秒";
+  clearInterval(timerInt); clearTimeout(limitTO);
+  const ms=Date.now()-qStart; totalTime+=ms;
+  $("#timer").textContent="⏱ "+(ms/1000).toFixed(1)+"秒";
+  $("#opts").querySelectorAll(".opt").forEach((b,k)=>{ b.disabled=true; if(k===d.a)b.classList.add("ok"); if(k===i&&i!==d.a)b.classList.add("ng"); });
   const ok=(i===d.a);
-  if(ok){ score++; streak++; removeWeak(d.q); } else { streak=0; wrong.push({...d,picked:i}); addWeak(d); }
-  recordAns(d.c, ok);
+  if(ok){ score++; streak++; srsCorrect(d.q); } else { streak=0; wrong.push({...d,picked:i}); addWeak(d); }
+  recordAns(d, ok, ms);
+  reveal(ok, d, false);
+}
+function timeUp(){                                  // ①時間切れ＝無回答で不正解扱い
+  if(answered) return; answered=true;
+  const d=pool[idx];
+  clearInterval(timerInt); clearTimeout(limitTO);
+  totalTime += limitSec*1000;
+  $("#timer").textContent="⏳ 時間切れ";
+  $("#opts").querySelectorAll(".opt").forEach((b,k)=>{ b.disabled=true; if(k===d.a)b.classList.add("ok"); });
+  streak=0; wrong.push({...d,picked:-1}); addWeak(d); recordAns(d,false,limitSec*1000);
+  reveal(false, d, true);
+}
+function reveal(ok, d, timedout){
   const exp=$("#exp"); exp.classList.add("show");
-  exp.innerHTML=`<div class="res ${ok?'ok':'ng'}">${ok?'⭕ 正解':'❌ 不正解'}</div>${d.e}`;
+  const head = ok?'⭕ 正解' : timedout?'⏳ 時間切れ' : '❌ 不正解';
+  exp.innerHTML=`<div class="res ${ok?'ok':'ng'}">${head}</div>${d.e}`;
   $("#nextrow").classList.remove("hide");
   $("#score").textContent=`正解 ${score} / ${idx+1}　🔥${streak}`;
   $("#prog").style.width=`${(idx+1)/pool.length*100}%`;
+  if(autoNext){                                    // ⑧自動で次へ（正解は短く・誤答は解説を読む時間を長めに）
+    const tok=advanceTok;
+    setTimeout(()=>{ if(answered && tok===advanceTok) next(); }, ok?1100:2300);
+  }
 }
 function next(){
   if(!answered) return;
+  advanceTok++;                  // ⑧保留中の自動で次へを無効化（手動操作が優先）
+  clearTimeout(limitTO);
   idx++;
   if(idx<pool.length) showQ(); else finish();
 }
 function finish(){
-  clearInterval(timerInt);
+  clearInterval(timerInt); clearTimeout(limitTO); clearSession();   // ⑦完走したら途中保存を消す
   $("#quiz").classList.add("hide"); $("#result").classList.remove("hide");
   recordSession(score, pool.length);
   const avg=totalTime/pool.length/1000;
@@ -601,29 +790,76 @@ function finish(){
   arc.style.transition="none"; arc.setAttribute("stroke-dashoffset", C);
   requestAnimationFrame(()=>{ arc.style.transition="stroke-dashoffset .8s ease"; arc.setAttribute("stroke-dashoffset", C*(1-pct/100)); });
   $("#rmsg").textContent= pct>=90?"完璧。本番でも取れる水準です。": pct>=70?"good。間違えた問題だけ復習を。": pct>=50?"あと一歩。言い換えの型を意識して。":"まず解説の『言い換え』を覚えるところから。";
+  if(mockMode){ const lv= pct>=85?'A（上位）': pct>=70?'B（合格圏）': pct>=55?'C（あと一歩）':'D（基礎固め）'; $("#rmsg").textContent=`【本番模試】目安レベル ${lv}（正答率${pct}%）`; }
   const rv=$("#review"); rv.innerHTML="";
   if(wrong.length===0){ rv.innerHTML='<p class="small">全問正解！復習対象なし。</p>'; }
   else{
     const labels=["ア","イ","ウ","エ","オ","カ"];
     rv.innerHTML='<p class="small" style="margin:0 0 6px">間違えた問題（'+wrong.length+'）</p>'+
       wrong.map(w=>`<div class="ri"><div>${w.q.replace(/_(.+?)_/g,"<b>$1</b>")}</div>
-      <div class="small">あなた: ${labels[w.picked]}「${w.o[w.picked]}」 ／ 正解: ${labels[w.a]}「${w.o[w.a]}」</div>
+      <div class="small">あなた: ${w.picked<0?'⏳ 時間切れ（無回答）':labels[w.picked]+'「'+w.o[w.picked]+'」'} ／ 正解: ${labels[w.a]}「${w.o[w.a]}」</div>
       <div class="small">${w.e}</div></div>`).join("");
   }
 }
 
 /* ===== 学習記録（ブラウザ保存） ===== */
-const SKEY="spi_stats_v1";
-function loadStats(){ try{const s=JSON.parse(localStorage.getItem(SKEY))||{}; s.cat=s.cat||{}; s.hist=s.hist||[]; s.weak=s.weak||[]; return s;}catch(e){return {cat:{},hist:[],weak:[]}} }
+const SKEY="spi_stats_v2", OLDKEY="spi_stats_v1";
+function loadStats(){
+  try{
+    let s=JSON.parse(localStorage.getItem(SKEY));
+    if(!s){ // v1からの移行
+      const o=JSON.parse(localStorage.getItem(OLDKEY));
+      if(o) s={cat:o.cat||{},hist:o.hist||[],weak:(o.weak||[]).map(w=>({...w,lv:0,due:0})),qstat:{}};
+    }
+    s=s||{}; s.cat=s.cat||{}; s.hist=s.hist||[]; s.weak=s.weak||[]; s.qstat=s.qstat||{};
+    return s;
+  }catch(e){ return {cat:{},hist:[],weak:[],qstat:{}} }
+}
 function saveStats(){ try{localStorage.setItem(SKEY,JSON.stringify(STATS))}catch(e){} }
 let STATS=loadStats();
-function recordAns(cat,ok){ const c=STATS.cat[cat]||(STATS.cat[cat]={seen:0,correct:0}); c.seen++; if(ok)c.correct++; saveStats(); }
-function addWeak(d){ if(STATS.weak.some(x=>x.q===d.q)) return; STATS.weak.push({c:d.c,q:d.q,o:d.o,a:d.a,e:d.e}); if(STATS.weak.length>300) STATS.weak.shift(); saveStats(); }
+/* ②問題単位の記録 */
+function recordAns(d,ok,ms){
+  const c=STATS.cat[d.c]||(STATS.cat[d.c]={seen:0,correct:0}); c.seen++; if(ok)c.correct++;
+  const q=STATS.qstat[d.q]||(STATS.qstat[d.q]={s:0,c:0,ms:0}); q.s++; if(ok)q.c++; if(ms)q.ms=ms;
+  saveStats();
+}
+function qAcc(q){ const s=STATS.qstat[q]; return s&&s.s? s.c/s.s : -1; }   // -1=未挑戦（最優先）
+/* ③SRS（間隔反復）: lv=連続正解数, due=次に出す日 */
+const SRS_STEP=[1,3,7,16];
+function addWeak(d){
+  const w=STATS.weak.find(x=>x.q===d.q);
+  if(w){ w.lv=0; w.due=today(); }   // 再び間違えた→リセット
+  else { STATS.weak.push({c:d.c,q:d.q,o:d.o,a:d.a,e:d.e,lv:0,due:today()}); if(STATS.weak.length>400) STATS.weak.shift(); }
+  saveStats();
+}
+function srsCorrect(q){
+  const w=STATS.weak.find(x=>x.q===q); if(!w) return;
+  w.lv=(w.lv||0)+1;
+  if(w.lv>SRS_STEP.length){ removeWeak(q); }          // 卒業→苦手リストから外す
+  else { w.due=today()+SRS_STEP[w.lv-1]; saveStats(); }
+}
 function removeWeak(q){ const i=STATS.weak.findIndex(x=>x.q===q); if(i>=0){ STATS.weak.splice(i,1); saveStats(); } }
+function dueWeak(){ return STATS.weak.filter(w=>(w.due||0)<=today()); }   // 今日復習すべき苦手
 function recordSession(s,t){ STATS.hist.push({d:new Date().toISOString().slice(5,10),s:s,t:t,p:Math.round(s/t*100)}); if(STATS.hist.length>20)STATS.hist=STATS.hist.slice(-20); saveStats(); }
-function catAcc(cat){ const c=STATS.cat[cat]; return c&&c.seen ? c.correct/c.seen : -1; } // -1 = 未挑戦（最優先）
 function weakOrder(list){
-  return list.slice().sort((a,b)=>{ const av=catAcc(a.c), bv=catAcc(b.c); return (av<0?-0.01:av)-(bv<0?-0.01:bv) || Math.random()-0.5; });
+  // ②問題単位: 未挑戦→正答率が低い順
+  return list.slice().sort((x,y)=>{ const ax=qAcc(x.q), ay=qAcc(y.q); return ax-ay || Math.random()-0.5; });
+}
+
+/* ===== ⑦途中再開（セッション自動保存） ===== */
+const SESKEY="spi_session_v1";
+function saveSession(){
+  if(!pool.length){ clearSession(); return; }
+  try{ localStorage.setItem(SESKEY, JSON.stringify({pool,idx,score,wrong,streak,totalTime,limitSec,ts:Date.now()})); }catch(e){}
+}
+function clearSession(){ try{ localStorage.removeItem(SESKEY); }catch(e){} }
+function loadSession(){ try{ return JSON.parse(localStorage.getItem(SESKEY)); }catch(e){ return null; } }
+function resumeSession(){
+  const s=loadSession();
+  if(!s||!s.pool||!s.pool.length){ return; }
+  pool=s.pool; idx=s.idx||0; score=s.score||0; wrong=s.wrong||[]; streak=s.streak||0; totalTime=s.totalTime||0; limitSec=s.limitSec||0;
+  $("#setup").classList.add("hide"); $("#result").classList.add("hide"); $("#quiz").classList.remove("hide");
+  showQ();
 }
 function renderCatLaunch(){
   const box=$("#catLaunch"); box.innerHTML="";
@@ -640,9 +876,11 @@ function renderCatLaunch(){
 }
 function renderStats(){
   renderCatLaunch();
+  renderResume();
   const wc=$("#weakCount"), wb=$("#startWeakList");
-  if(wc){ wc.textContent = STATS.weak.length? `登録 ${STATS.weak.length} 問（正解すると外れます）` : "間違えた問題がここに溜まります"; }
-  if(wb){ wb.disabled = !STATS.weak.length; wb.style.opacity = STATS.weak.length? "1":".5"; }
+  const due=dueWeak().length, tot=STATS.weak.length;
+  if(wc){ wc.textContent = tot? `今日 ${due} 問 / 苦手 ${tot} 問（連続正解で卒業）` : "間違えた問題がここに溜まります"; }
+  if(wb){ wb.disabled = !tot; wb.style.opacity = tot? "1":".5"; wb.textContent = due? `★ 今日の復習（${due}）` : "★ 今日の復習"; }
   const box=$("#statsCard");
   const cats=CATS.filter(c=>STATS.cat[c]);
   let html='<h2>学習の記録 <button class="chip" id="resetStats" style="float:right;font-size:11px;padding:4px 10px">記録をリセット</button></h2>';
@@ -666,25 +904,77 @@ function renderStats(){
   }
   box.innerHTML=html;
   const rb=$("#resetStats");
-  if(rb) rb.onclick=()=>{ if(confirm("学習記録をすべて消去しますか？（苦手リストも消えます）")){ STATS={cat:{},hist:[],weak:[]}; saveStats(); renderStats(); } };
+  if(rb) rb.onclick=()=>{ if(confirm("学習記録をすべて消去しますか？（苦手リストも消えます）")){ STATS={cat:{},hist:[],weak:[],qstat:{}}; saveStats(); clearSession(); renderStats(); } };
+}
+/* ⑦前回の続き（再開カード） */
+function renderResume(){
+  const box=$("#resumeCard"); if(!box) return;
+  const s=loadSession();
+  if(s&&s.pool&&s.pool.length&&(s.idx||0)<s.pool.length){
+    box.classList.remove("hide");
+    box.innerHTML=`<h2>⏸ 前回の続き</h2><p class="small" style="margin:0 0 10px">${s.idx||0} / ${s.pool.length} 問まで進行中（正解 ${s.score||0}）${s.limitSec?` ・ 制限 ${s.limitSec}秒`:""}。</p>
+      <div class="row"><button class="btn" id="resumeBtn">続きから再開</button><button class="btn ghost" id="discardBtn">破棄</button></div>`;
+    $("#resumeBtn").onclick=()=>resumeSession();
+    $("#discardBtn").onclick=()=>{ clearSession(); renderResume(); };
+  } else { box.classList.add("hide"); box.innerHTML=""; }
+}
+/* ⑥言い換えチートシート（暗記モード） */
+function renderCheat(){
+  const body=$("#cheatBody");
+  const block=(title,color,rows)=>`<div style="margin:0 0 18px"><div class="meta" style="margin:0 0 7px"><span class="badge" style="background:${color};color:#fff">${title}</span><span class="small">${rows.length}項目</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">${rows.map(r=>`<span class="chip" style="cursor:default">${r}</span>`).join("")}</div></div>`;
+  const jkdesc={"似た意味":"似た意味の漢字","反対":"反対の漢字","主述":"主語+述語","動目":"動詞+目的語","修飾":"前が後ろを修飾"};
+  let html="";
+  html+=block("同義語 ≒","#2ec27e",BANK_SYN.map(([a,b])=>`${a} ≒ ${b}`));
+  html+=block("反義語 ⇔","#ff8a3d",BANK_ANT.map(([a,b])=>`${a} ⇔ ${b}`));
+  html+=block("熟語の成り立ち","#1fb6a6",Object.keys(BANK_JK).map(k=>`【${jkdesc[k]}】${BANK_JK[k].slice(0,8).join("・")}…`));
+  html+=block("二語の関係","#9b6bff",Object.keys(BANK_REL).map(k=>`【${k}】${BANK_REL[k].slice(0,3).map(p=>p[0]+"："+p[1]).join("／")}…`));
+  html+=block("語句の意味・慣用句","#e0556e",BANK_MEAN.map(e=>`${e.t}＝${e.m}`));
+  body.innerHTML=html;
 }
 
 /* ===== イベント ===== */
 function selQ(){ return ALL.filter(d=>selected.has(d.c)); }
+/* ⑥本番フル模試：選択中から30問・各30秒・通し */
+function startMock(){
+  const list=shuffle(selQ().slice()).slice(0,30).map(shuffleChoices);
+  if(!list.length) return;
+  mockMode=true; limitSec=30; idx=0; score=0; wrong=[]; streak=0; totalTime=0; pool=list;
+  $("#setup").classList.add("hide"); $("#result").classList.add("hide"); $("#quiz").classList.remove("hide");
+  showQ();
+}
+/* ⑦未出題優先：解いた回数が少ない順 */
+function unseenOrder(list){ return list.slice().sort((x,y)=>{ const sx=(STATS.qstat[x.q]||{}).s||0, sy=(STATS.qstat[y.q]||{}).s||0; return sx-sy || Math.random()-0.5; }); }
+function startUnseen(){ start(unseenOrder(selQ()), true); }
+function backToSetup(){ advanceTok++; clearInterval(timerInt); clearTimeout(limitTO); $("#quiz").classList.add("hide"); $("#result").classList.add("hide"); $("#cheat").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); }
 $("#start").onclick=()=>start(selQ());
 $("#startWeak").onclick=()=>start(weakOrder(selQ()), true);
-$("#startWeakList").onclick=()=>{ if(STATS.weak.length) start(STATS.weak.map(w=>({...w})), true); };
+$("#startWeakList").onclick=()=>{ const due=dueWeak(); const list=due.length?due:STATS.weak; if(list.length) start(list.map(w=>({...w})), true); };  // ③今日の復習優先
 $("#next").onclick=next;
-$("#quit").onclick=()=>{ clearInterval(timerInt); $("#quiz").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); };
+$("#quit").onclick=()=>{ clearInterval(timerInt); clearTimeout(limitTO); saveSession(); backToSetup(); };   // ⑦途中保存して戻る
 $("#again").onclick=()=>start(selQ());
 $("#wrongOnly").onclick=()=>{ if(wrong.length) start(wrong.map(w=>({c:w.c,q:w.q,o:w.o,a:w.a,e:w.e})), true); };
-$("#home").onclick=()=>{ $("#result").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); };
+$("#home").onclick=()=>backToSetup();
+/* ⑥チートシート */
+$("#cheatBtn").onclick=()=>{ renderCheat(); $("#setup").classList.add("hide"); $("#cheat").classList.remove("hide"); window.scrollTo(0,0); };
+$("#cheatHome").onclick=()=>backToSetup();
+/* ①制限時間セレクタ */
+$("#limitseg").querySelectorAll("button").forEach(b=>{ b.onclick=()=>{ $("#limitseg").querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); limitSec=+b.dataset.l; }; });
+/* ⑧自動で次へ */
+$("#autoNext").onchange=e=>{ autoNext=e.target.checked; };
+/* ⑥模試 ⑦未出題優先 */
+$("#mockBtn").onclick=()=>startMock();
+$("#unseenBtn").onclick=()=>startUnseen();
 document.addEventListener("keydown",e=>{
   if(!$("#quiz").classList.contains("hide")){
-    if(["1","2","3","4","5"].includes(e.key)){ const i=+e.key-1; const b=$("#opts").children[i]; if(b&&!answered)choose(i); }
+    if(["1","2","3","4","5","6"].includes(e.key)){ const i=+e.key-1; const b=$("#opts").children[i]; if(b&&!answered)choose(i); }
     if(e.key==="Enter"||e.key==="ArrowRight"){ if(answered)next(); }
   }
 });
+/* ⑧スワイプ：回答後に左へスワイプで次の問題へ */
+(function(){ let x0=null,y0=null; const q=$("#quiz");
+  q.addEventListener("touchstart",e=>{ const t=e.changedTouches[0]; x0=t.clientX; y0=t.clientY; },{passive:true});
+  q.addEventListener("touchend",e=>{ if(x0==null)return; const t=e.changedTouches[0]; if(t.clientX-x0<-60 && Math.abs(t.clientY-y0)<50 && answered) next(); x0=null; },{passive:true});
+})();
 
 /* ===== 記録の書き出し／読み込み（端末間コピー用） ===== */
 $("#exportBtn").onclick=()=>{
@@ -710,8 +1000,10 @@ $("#importFile").onchange=e=>{
       });
       const hist=(STATS.hist||[]).concat(inc.hist||[]).slice(-20);
       const weak=(STATS.weak||[]).slice();
-      (inc.weak||[]).forEach(x=>{ if(x&&x.q&&!weak.some(y=>y.q===x.q)) weak.push(x); });
-      STATS={cat:cat,hist:hist,weak:weak.slice(-300)}; saveStats(); renderStats();
+      (inc.weak||[]).forEach(x=>{ if(x&&x.q&&!weak.some(y=>y.q===x.q)) weak.push({lv:0,due:0,...x}); });
+      const qstat=Object.assign({},STATS.qstat||{});   // ②問題単位の記録も合算
+      Object.keys(inc.qstat||{}).forEach(q=>{ const a=qstat[q]||{s:0,c:0,ms:0}, b=inc.qstat[q]; qstat[q]={s:a.s+(b.s||0), c:a.c+(b.c||0), ms:b.ms||a.ms}; });
+      STATS={cat:cat,hist:hist,weak:weak.slice(-400),qstat:qstat}; saveStats(); renderStats();
       alert("記録を読み込みました（既存の記録と合算）。");
     }catch(err){ alert("読み込みに失敗しました。書き出した SPI学習記録.json を選んでください。"); }
     $("#importFile").value="";
@@ -754,6 +1046,11 @@ function renderInstall(){
 renderCats();
 renderStats();
 renderInstall();
+
+/* ===== ①完全オフライン対応：Service Worker 登録（https/GitHub Pages で有効、file:// では無効） ===== */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
 </script>
 </body>
 </html>
