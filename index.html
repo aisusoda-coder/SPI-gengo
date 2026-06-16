@@ -151,7 +151,8 @@
       <h2>分野ごとに出題（1タップで開始）</h2>
       <div id="catLaunch"></div>
     </div>
-    <div class="card"><button class="btn ghost" id="cheatBtn" style="width:100%">📖 言い換えチートシート（暗記モード）</button></div>
+    <div class="card"><button class="btn ghost" id="longBtn" style="width:100%">📖 長文読解（タブ式・1文章に複数設問）</button></div>
+    <div class="card"><button class="btn ghost" id="cheatBtn" style="width:100%">📖 チートシート（暗記・由来・苦手復習）</button></div>
     <div class="card" id="statsCard"></div>
     <div class="row">
       <button class="btn ghost" id="exportBtn">記録を書き出し</button>
@@ -214,6 +215,18 @@
       </div>
       <p class="small" style="margin:0 0 12px">SPI言語の「型」を一覧で暗記。⇄や≒の右側を覚えるのが最短です。</p>
       <div id="cheatBody"></div>
+    </div>
+  </section>
+
+  <!-- 長文読解（タブ式・本番形式） -->
+  <section id="long" class="hide">
+    <div class="card">
+      <div class="meta" style="margin-bottom:12px">
+        <h2 style="margin:0">📖 長文読解（タブ式）</h2>
+        <button class="btn ghost" id="longHome" style="padding:7px 14px">閉じる</button>
+      </div>
+      <p class="small" style="margin:0 0 12px">上で長文を選び、文章を読んでから各<b>設問タブ</b>を解きます。間違えた設問は苦手リストにも入ります。</p>
+      <div id="longBody"></div>
     </div>
   </section>
 </div>
@@ -650,6 +663,56 @@ const LONGSETS=[
 {c:"長文",q:"【長文B】外来語の増加を嘆く声がある。しかし言語は常に他言語の影響を受けて豊かになってきた。重要なのは排除ではなく、使い分ける力を養うことだ。 ─ 「言語は豊かになってきた」理由は？",o:["他言語の影響を受けてきたから","話者が多いから","文法が単純だから","文字の種類が多いから"],a:0,e:"本文に「<b>他言語の影響を受けて</b>豊かになってきた」と明記。"},
 ];
 
+/* ===== 長文読解（タブ式）：長い文章＋複数設問 ===== */
+const READING=[
+{t:"長文A 効率と創造", p:"現代社会では、効率を高めることが何より重視される。無駄を省き、短い時間で多くの成果を上げることが「良い働き方」とされる。\nしかし、効率ばかりを追い求めると、私たちは立ち止まって考える時間を失ってしまう。新しい発想や独創的なアイデアは、しばしば一見すると無駄に見える時間――ぼんやり過ごす時間や、寄り道のような経験――から生まれる。\n効率と創造性は、必ずしも両立するとは限らない。むしろ、あえて非効率な時間を確保することが、長い目で見れば豊かな成果につながるのである。", qs:[
+  {q:"設問1　筆者が「効率ばかりを追い求めること」の問題点として挙げているのは？", o:["立ち止まって考える時間を失うこと","成果が減ること","仕事量が増えること","人間関係が悪くなること"], a:0, e:"「効率ばかりを追い求めると…考える時間を失ってしまう」と本文に明記。"},
+  {q:"設問2　筆者によれば、新しい発想はどこから生まれるか？", o:["一見無駄に見える時間から","効率的な作業から","長時間の労働から","他人の指示から"], a:0, e:"「無駄に見える時間…から生まれる」。本文にない選択肢を切る。"},
+  {q:"設問3　この文章で筆者が最も言いたいことは？", o:["あえて非効率な時間を持つことが豊かな成果につながる","効率を最大化すべきだ","創造性は不要だ","無駄は完全に省くべきだ"], a:0, e:"最終文（逆接「むしろ」の後ろ）が主張。"}
+]},
+{t:"長文B 言葉の変化", p:"「ら抜き言葉」や新しい外来語の流入を、日本語の乱れだと嘆く声は根強い。確かに、伝統的な言葉づかいには美しさがあり、それを守る意義は小さくない。\nだが歴史を振り返れば、言語は常に変化し続けてきた。かつて誤りとされた表現が、多くの人に使われるうちに正しい用法として定着した例は数多い。言語は固定された規則の体系ではなく、使う人々によって絶えず作り替えられていく生き物なのだ。\n大切なのは、変化をただ嘆くことでも無批判に受け入れることでもなく、なぜその変化が起きるのかを考え、場面に応じて適切に使い分ける力を養うことである。", qs:[
+  {q:"設問1　筆者は「言語」をどのようなものと捉えているか？", o:["使う人々によって絶えず作り替えられる生き物","決して変わらない規則の体系","乱れていく一方のもの","専門家だけが決めるもの"], a:0, e:"「使う人々によって…作り替えられていく生き物なのだ」。"},
+  {q:"設問2　「かつて誤りとされた表現」について、筆者は何と述べているか？", o:["多くの人に使われ正しい用法として定着した例が多い","すべて排除すべきだ","今も誤りのままだ","ほとんど存在しない"], a:0, e:"「正しい用法として定着した例は数多い」。"},
+  {q:"設問3　筆者が最も大切だとするのは？", o:["変化の理由を考え、場面に応じて使い分ける力","伝統を完全に守ること","変化をすべて受け入れること","外来語をもっと増やすこと"], a:0, e:"最終文「大切なのは…使い分ける力を養うこと」。"}
+]},
+{t:"長文C 失敗と信頼", p:"失敗をしたとき、人はそれを隠したくなる。ミスが知られれば評価が下がり、信頼を失うと考えるからだ。\nしかし、隠した失敗はやがて発覚することが多く、その時に失われる信頼は、最初に正直に認めた場合よりもはるかに大きい。なぜなら、人が問題視するのは失敗そのものよりも、それを隠そうとした不誠実な態度だからである。\nむしろ、自分の非を早く認めて謝り、再発を防ぐ姿勢を示す人は、長い目で見れば周囲からの信頼を厚くする。失敗を完全になくすことはできない。重要なのは、失敗とどう向き合うかなのだ。", qs:[
+  {q:"設問1　人が失敗を隠そうとするのはなぜか？", o:["評価が下がり信頼を失うと考えるから","失敗が小さいから","周囲が気づかないから","謝るのが面倒だから"], a:0, e:"「評価が下がり、信頼を失うと考えるから」。"},
+  {q:"設問2　筆者によれば、人が最も問題視するのは何か？", o:["失敗を隠そうとした不誠実な態度","失敗そのもの","失敗の回数","謝罪の言葉づかい"], a:0, e:"「問題視するのは…隠そうとした不誠実な態度」。"},
+  {q:"設問3　この文章の主旨は？", o:["失敗は隠さず向き合う姿勢が信頼につながる","失敗は決してしてはいけない","信頼は一度失えば戻らない","評価は気にしなくてよい"], a:0, e:"「重要なのは、失敗とどう向き合うか」。"}
+]},
+{t:"長文D 技術と幸福", p:"科学技術の進歩は、私たちの生活を劇的に便利にしてきた。家事は機械が担い、世界中の情報は手のひらの中にある。\nだが、便利になることと幸福になることは、必ずしも同じではない。むしろ、選択肢が増えすぎて何を選ぶべきか迷い、常に情報にさらされて心が休まらない、という新たな苦しみも生まれている。\n技術はあくまで手段であって、目的ではない。それをどう使い、どんな生き方を実現するのかを決めるのは、結局のところ私たち自身である。技術の進歩を幸福に結びつけられるかどうかは、人間の側の選択にかかっている。", qs:[
+  {q:"設問1　筆者は「便利さ」と「幸福」の関係をどう述べているか？", o:["必ずしも同じではない","完全に一致する","まったく無関係だ","反比例する"], a:0, e:"「便利になることと幸福になることは、必ずしも同じではない」。"},
+  {q:"設問2　技術の進歩が生んだ「新たな苦しみ」として挙げられているのは？", o:["選択肢が増えて迷い、情報で心が休まらないこと","体力が落ちること","仕事が減ること","物価が上がること"], a:0, e:"「選択肢が増えすぎて…心が休まらない」。"},
+  {q:"設問3　筆者の結論は？", o:["技術を幸福に結びつけられるかは人間の選択しだいだ","技術は不要だ","便利さこそ幸福だ","技術は必ず人を幸福にする"], a:0, e:"最終文「人間の側の選択にかかっている」。"}
+]}
+];
+
+/* ===== 由来で覚える 故事成語・四字熟語（チートシート用） ===== */
+const ORIGINS=[
+{t:"矛盾",m:"つじつまが合わないこと",o:"『韓非子』。「どんな盾も貫く矛」と「どんな矛も防ぐ盾」を売る商人が、「その矛でその盾を突いたら？」と問われ答えに詰まった故事から。"},
+{t:"蛇足",m:"余計な付け足し",o:"『戦国策』。蛇を早く描く競争で、一番に描き終えた者が得意げに足まで描き足し、「蛇に足はない」と負けにされた話から。"},
+{t:"杞憂",m:"無用な心配・取り越し苦労",o:"『列子』。杞の国の人が「天が落ちてきたら」と心配し続けた故事から。"},
+{t:"推敲",m:"文章の字句を何度も練り直すこと",o:"唐の詩人・賈島が「僧は推す月下の門」の『推す』を『敲く』にすべきか悩み、韓愈に相談した故事から。"},
+{t:"他山の石",m:"他人の誤りも自分を磨く助けになる",o:"『詩経』「他山の石、以て玉を攻(みが)くべし」から。よその山の粗悪な石でも自分の玉を磨ける、の意。"},
+{t:"漁夫の利",m:"両者が争う隙に第三者が利益を得ること",o:"『戦国策』。シギとハマグリが争って動けないところを、漁師が両方とも捕らえた故事から。"},
+{t:"四面楚歌",m:"周囲がすべて敵で孤立無援なこと",o:"『史記』。漢に囲まれた項羽が、四方の漢軍から故郷・楚の歌を聞き、味方の離反を悟った場面から。"},
+{t:"背水の陣",m:"退路を断ち決死で事に当たること",o:"『史記』。漢の韓信が川を背に陣を敷き、逃げ場のない兵に決死の力を出させて勝った故事から。"},
+{t:"塞翁が馬",m:"幸不幸は予測できないこと",o:"『淮南子』。老人の馬が逃げ→駿馬を連れ帰り→息子が落馬→そのため徴兵を免れた、という幸不幸の連鎖から。"},
+{t:"朝三暮四",m:"目先の違いにとらわれ、結果が同じと気づかないこと",o:"『荘子』。猿に木の実を「朝3つ夜4つ」と言うと怒り、「朝4つ夜3つ」と言うと喜んだ（合計は同じ）故事から。"},
+{t:"圧巻",m:"全体の中で最も優れた部分",o:"昔の科挙で、最も優れた答案を一番上（巻の上）に載せたことから。"},
+{t:"白眉",m:"多くの中で最も優れた人・もの",o:"『三国志』。蜀の馬氏五兄弟のうち、眉に白毛のある馬良が最も優秀だったことから。"},
+{t:"登竜門",m:"出世・成功のための関門",o:"黄河上流の急流「竜門」を登りきった鯉は竜になるという伝説から。"},
+{t:"画竜点睛",m:"最後の肝心な仕上げ",o:"梁の画家が竜を描き、最後に睛(ひとみ)を入れたら竜が飛び去った故事から。『点睛を欠く』で肝心が抜ける意。"},
+{t:"杜撰",m:"いいかげんで誤りが多いこと",o:"宋の杜黙(ともく)の作る詩がしばしば規則に合わなかったことから（杜の撰した文＝杜撰）。"},
+{t:"完璧",m:"欠点がなく完全なこと",o:"『史記』。趙の藺相如が、宝玉「和氏の璧」を傷一つなく持ち帰った（璧を完うした）故事から。"},
+{t:"助長",m:"余計な手助けでかえって害すること",o:"『孟子』。宋の人が苗を早く伸ばそうと引っ張り、かえって枯らした故事から（本来は悪い意味）。"},
+{t:"蛍雪の功",m:"苦労して学び成功すること",o:"晋の車胤が蛍の光で、孫康が雪明かりで書を読んだ故事から。"},
+{t:"切磋琢磨",m:"互いに努力し合って向上すること",o:"『詩経』。骨・象牙を切り磨き、玉・石を打ち磨くように学問・人格を磨くことから。"},
+{t:"温故知新",m:"古いことを学び新しい知見を得ること",o:"『論語』「故きを温(たず)ねて新しきを知る」から。"},
+{t:"呉越同舟",m:"仲の悪い者が同じ場に居合わせること",o:"『孫子』。仲の悪い呉と越の人でも、同じ舟で嵐に遭えば左右の手のように助け合う、という記述から。"},
+{t:"五十歩百歩",m:"少しの違いはあっても本質は同じ",o:"『孟子』。戦場で五十歩逃げた者が百歩逃げた者を臆病と笑ったが、逃げた点では同じ、という話から。"}
+];
+
 /* ②⑤ 重複文言を排除して結合（固定＋自動生成＋非言語＋長文） */
 const ALL=(()=>{ const seen=new Set();
   return [].concat(DATA, GEN, NONVERBAL, LONGSETS).filter(d=>{ if(seen.has(d.q)) return false; seen.add(d.q); return true; });
@@ -924,12 +987,42 @@ function renderCheat(){
   const block=(title,color,rows)=>`<div style="margin:0 0 18px"><div class="meta" style="margin:0 0 7px"><span class="badge" style="background:${color};color:#fff">${title}</span><span class="small">${rows.length}項目</span></div><div style="display:flex;flex-wrap:wrap;gap:6px">${rows.map(r=>`<span class="chip" style="cursor:default">${r}</span>`).join("")}</div></div>`;
   const jkdesc={"似た意味":"似た意味の漢字","反対":"反対の漢字","主述":"主語+述語","動目":"動詞+目的語","修飾":"前が後ろを修飾"};
   let html="";
+  /* ★ 苦手リスト（間違えた問題）をいちばん上で素早く確認 */
+  const wk=STATS.weak.slice().sort((a,b)=>(a.due||0)-(b.due||0));
+  html+=`<div style="margin:0 0 18px"><div class="meta" style="margin:0 0 7px"><span class="badge" style="background:#e0556e;color:#fff">❌ 苦手リスト（${wk.length}）</span><span class="small">間違えた問題をまとめて確認</span></div>`;
+  html+= wk.length? '<div class="review">'+wk.map(w=>`<div class="ri"><div style="font-weight:600">${w.q.replace(/【.*?】/,"").replace(/_(.+?)_/g,"$1")}</div><div class="small">正解: <b>${w.o[w.a]}</b></div><div class="small">${w.e}</div></div>`).join("")+'</div>' : '<p class="small">まだありません。問題を解くと、間違えた問題がここに集まります。</p>';
+  html+=`</div>`;
   html+=block("同義語 ≒","#2ec27e",BANK_SYN.map(([a,b])=>`${a} ≒ ${b}`));
   html+=block("反義語 ⇔","#ff8a3d",BANK_ANT.map(([a,b])=>`${a} ⇔ ${b}`));
   html+=block("熟語の成り立ち","#1fb6a6",Object.keys(BANK_JK).map(k=>`【${jkdesc[k]}】${BANK_JK[k].slice(0,8).join("・")}…`));
   html+=block("二語の関係","#9b6bff",Object.keys(BANK_REL).map(k=>`【${k}】${BANK_REL[k].slice(0,3).map(p=>p[0]+"："+p[1]).join("／")}…`));
   html+=block("語句の意味・慣用句","#e0556e",BANK_MEAN.map(e=>`${e.t}＝${e.m}`));
+  /* ★ 由来から覚える 故事成語・四字熟語（丁寧解説） */
+  html+=`<div style="margin:0 0 18px"><div class="meta" style="margin:0 0 7px"><span class="badge" style="background:#d6a400;color:#fff">由来で覚える 故事・四字熟語（${ORIGINS.length}）</span></div><div class="review">`+ORIGINS.map(e=>`<div class="ri"><div style="font-weight:700">${e.t} <span class="small" style="font-weight:400">＝ ${e.m}</span></div><div class="small" style="line-height:1.75">〔由来〕${e.o}</div></div>`).join("")+`</div></div>`;
   body.innerHTML=html;
+}
+
+/* ===== 長文読解（タブ式）===== */
+let lpi=0, lqi=0, lans={};
+function openLong(){ lpi=0; lqi=0; lans={}; $("#setup").classList.add("hide"); $("#long").classList.remove("hide"); renderLong(); window.scrollTo(0,0); }
+function renderLong(){
+  const set=READING[lpi];
+  const psel=READING.map((s,i)=>`<button class="chip ${i===lpi?'on':''}" data-lp="${i}">${s.t.split(' ')[0]}</button>`).join("");
+  const tabs=set.qs.map((qq,qi)=>{ const k=lpi+'-'+qi, done=lans[k]!=null, ok=done&&lans[k]===qq.a; return `<button class="chip ${qi===lqi?'on':''}" data-lq="${qi}">設問${qi+1}${done?(ok?'✅':'❌'):''}</button>`; }).join("");
+  const q=set.qs[lqi], k=lpi+'-'+lqi, chosen=lans[k], labels=["ア","イ","ウ","エ","オ"];
+  const opts=q.o.map((t,i)=>{ let cls="opt",dis=""; if(chosen!=null){ dis="disabled"; if(i===q.a)cls+=" ok"; if(i===chosen&&i!==q.a)cls+=" ng"; } return `<button class="${cls}" data-opt="${i}" ${dis}><span class="k">${labels[i]}</span><span>${t}</span></button>`; }).join("");
+  const done=set.qs.filter((_,qi)=>lans[lpi+'-'+qi]!=null).length, cor=set.qs.filter((qq,qi)=>lans[lpi+'-'+qi]===qq.a).length;
+  const exp = chosen!=null ? `<div class="exp show"><div class="res ${chosen===q.a?'ok':'ng'}">${chosen===q.a?'⭕ 正解':'❌ 不正解'}</div>${q.e}</div>` : "";
+  $("#longBody").innerHTML=`
+    <div class="cats" style="margin-bottom:10px">${psel}</div>
+    <div class="card" style="background:var(--card2);max-height:40vh;overflow:auto;margin:0 0 12px"><div style="white-space:pre-wrap;line-height:1.95">${set.p}</div></div>
+    <div class="meta" style="margin:0 0 8px"><span class="badge" style="background:#ff6b9d;color:#fff">${set.t}</span><span class="small">この長文 ${cor}/${set.qs.length} 正解（${done}問解答）</span></div>
+    <div class="cats" style="margin:0 0 12px">${tabs}</div>
+    <div class="q" style="font-size:16px">${q.q}</div>
+    <div class="opts">${opts}</div>${exp}`;
+  $("#longBody").querySelectorAll("[data-lp]").forEach(b=>b.onclick=()=>{ lpi=+b.dataset.lp; lqi=0; renderLong(); });
+  $("#longBody").querySelectorAll("[data-lq]").forEach(b=>b.onclick=()=>{ lqi=+b.dataset.lq; renderLong(); });
+  $("#longBody").querySelectorAll("[data-opt]").forEach(b=>b.onclick=()=>{ const kk=lpi+'-'+lqi; if(lans[kk]!=null) return; const i=+b.dataset.opt; lans[kk]=i; const d={c:"長文",q:`【${set.t}】${q.q}`,o:q.o,a:q.a,e:q.e}; const ok=i===q.a; if(ok) srsCorrect(d.q); else addWeak(d); recordAns(d,ok,0); renderLong(); });
 }
 
 /* ===== イベント ===== */
@@ -945,7 +1038,7 @@ function startMock(){
 /* ⑦未出題優先：解いた回数が少ない順 */
 function unseenOrder(list){ return list.slice().sort((x,y)=>{ const sx=(STATS.qstat[x.q]||{}).s||0, sy=(STATS.qstat[y.q]||{}).s||0; return sx-sy || Math.random()-0.5; }); }
 function startUnseen(){ start(unseenOrder(selQ()), true); }
-function backToSetup(){ advanceTok++; clearInterval(timerInt); clearTimeout(limitTO); $("#quiz").classList.add("hide"); $("#result").classList.add("hide"); $("#cheat").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); }
+function backToSetup(){ advanceTok++; clearInterval(timerInt); clearTimeout(limitTO); $("#quiz").classList.add("hide"); $("#result").classList.add("hide"); $("#cheat").classList.add("hide"); $("#long").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); }
 $("#start").onclick=()=>start(selQ());
 $("#startWeak").onclick=()=>start(weakOrder(selQ()), true);
 $("#startWeakList").onclick=()=>{ const due=dueWeak(); const list=due.length?due:STATS.weak; if(list.length) start(list.map(w=>({...w})), true); };  // ③今日の復習優先
@@ -957,6 +1050,9 @@ $("#home").onclick=()=>backToSetup();
 /* ⑥チートシート */
 $("#cheatBtn").onclick=()=>{ renderCheat(); $("#setup").classList.add("hide"); $("#cheat").classList.remove("hide"); window.scrollTo(0,0); };
 $("#cheatHome").onclick=()=>backToSetup();
+/* 長文（タブ式） */
+$("#longBtn").onclick=()=>openLong();
+$("#longHome").onclick=()=>{ $("#long").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); window.scrollTo(0,0); };
 /* ①制限時間セレクタ */
 $("#limitseg").querySelectorAll("button").forEach(b=>{ b.onclick=()=>{ $("#limitseg").querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); limitSec=+b.dataset.l; }; });
 /* ⑧自動で次へ */
