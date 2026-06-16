@@ -152,6 +152,7 @@
       <div id="catLaunch"></div>
     </div>
     <div class="card"><button class="btn ghost" id="longBtn" style="width:100%">📖 長文読解（タブ式・1文章に複数設問）</button></div>
+    <div class="card"><button class="btn ghost" id="solveBtn" style="width:100%">🔢 非言語の解法ステップ例題（タブ式）</button></div>
     <div class="card"><button class="btn ghost" id="cheatBtn" style="width:100%">📖 チートシート（暗記・由来・苦手復習）</button></div>
     <div class="card" id="statsCard"></div>
     <div class="row">
@@ -227,6 +228,18 @@
       </div>
       <p class="small" style="margin:0 0 12px">上で長文を選び、文章を読んでから各<b>設問タブ</b>を解きます。間違えた設問は苦手リストにも入ります。</p>
       <div id="longBody"></div>
+    </div>
+  </section>
+
+  <!-- 非言語 解法ステップ例題（タブ式） -->
+  <section id="solve" class="hide">
+    <div class="card">
+      <div class="meta" style="margin-bottom:12px">
+        <h2 style="margin:0">🔢 解法ステップ例題</h2>
+        <button class="btn ghost" id="solveHome" style="padding:7px 14px">閉じる</button>
+      </div>
+      <p class="small" style="margin:0 0 12px">分野タブを選び、まず自分で考えてから<b>「解き方・答えを見る」</b>を開いて手順を確認しましょう。</p>
+      <div id="solveBody"></div>
     </div>
   </section>
 </div>
@@ -724,9 +737,60 @@ const NV_TIPS=[
 {t:"集合",items:["<b>n(A∪B)=n(A)+n(B)−n(A∩B)</b>（数えすぎた重複を1回引く）。","<b>ベン図</b>で「両方／片方だけ／どちらでもない」を整理。","「少なくとも一方」= 全体 −「どちらでもない」。","3集合は包除原理：Σn(A) −Σn(A∩B) +n(A∩B∩C)。"]}
 ];
 
+/* ===== 非言語：解法ステップ付き例題（タブ式） ===== */
+const SOLVE=[
+{t:"割合と比", ex:[
+ {q:"ある品物を定価の2割引で買ったら1600円だった。定価はいくらか。", s:["定価を x 円とおく。","2割引＝定価×0.8 なので 0.8x = 1600。","x = 1600 ÷ 0.8 = 2000。"], a:"2000円"},
+ {q:"40人のクラスで、男子は全体の55%である。男子は何人か。", s:["全体40人の55% を求める。","40 × 0.55 = 22。"], a:"22人"}
+]},
+{t:"推論", ex:[
+ {q:"A〜Dの身長について、AはBより高く、CはAより高く、DはBより低い。高い順に並べよ。", s:["C＞A（CはAより高い）と A＞B（AはBより高い）→ C＞A＞B。","D＜B（DはBより低い）を加える → C＞A＞B＞D。"], a:"C＞A＞B＞D"}
+]},
+{t:"損益算", ex:[
+ {q:"原価500円の品に2割の利益を見込んで定価をつけた。定価はいくらか。", s:["定価 = 原価 ×(1+利益率)。","500 ×(1+0.2) = 500 × 1.2 = 600。"], a:"600円"},
+ {q:"原価800円の品を定価1000円とし、定価の1割引で売った。利益はいくらか。", s:["売価 = 定価 ×(1−0.1) = 1000 × 0.9 = 900。","利益 = 売価 − 原価 = 900 − 800 = 100。"], a:"100円"}
+]},
+{t:"速さ", ex:[
+ {q:"時速60kmで2時間30分走ると、何km進むか。", s:["2時間30分 = 2.5時間。","距離 = 速さ × 時間 = 60 × 2.5 = 150。"], a:"150km"},
+ {q:"1.2km離れたAとBが向かい合って同時に歩き出す。Aは分速50m、Bは分速70m。何分で出会うか。", s:["距離 = 1200m。近づく速さ = 50+70 = 120 m/分。","時間 = 距離 ÷ 速さの和 = 1200 ÷ 120 = 10。"], a:"10分"}
+]},
+{t:"場合の数", ex:[
+ {q:"5人から3人を選んで一列に並べる方法は何通りか。", s:["順番ありなので順列 nPr を使う。","5P3 = 5 × 4 × 3 = 60。"], a:"60通り"},
+ {q:"5人から3人を選ぶ組合せは何通りか。", s:["順番なしなので組合せ nCr を使う。","5C3 = (5×4×3) ÷ (3×2×1) = 10。"], a:"10通り"}
+]},
+{t:"確率", ex:[
+ {q:"サイコロを1回振って、3以上の目が出る確率は。", s:["3以上 = 3,4,5,6 の4通り。","4 ÷ 6 = 2/3。"], a:"2/3"},
+ {q:"コインを2回投げて、少なくとも1回表が出る確率は。", s:["余事象＝2回とも裏 = 1/2 × 1/2 = 1/4。","1 − 1/4 = 3/4。"], a:"3/4"}
+]},
+{t:"集合", ex:[
+ {q:"30人のうち英語好きが18人、数学好きが15人、両方好きが8人。どちらか一方でも好きな人は何人か。", s:["n(A∪B) = n(A)+n(B) − n(A∩B)。","18 + 15 − 8 = 25。"], a:"25人"},
+ {q:"（上の続き）どちらも好きでない人は何人か。", s:["全体 − どちらか好き = 30 − 25。","= 5。"], a:"5人"}
+]}
+];
+
+/* ===== 公式 穴埋めチェック（カテゴリ「公式」として通常クイズに合流） ===== */
+const FORMULAS=[
+{c:"公式",q:"定価 ＝ 原価 ×（1＋□）　□に入るのは？",o:["利益率","割引率","税率","原価"],a:0,e:"定価 = 原価 ×(1+利益率)。"},
+{c:"公式",q:"売価 ＝ 定価 ×（1−□）　□は？",o:["割引率","利益率","原価率","消費税率"],a:0,e:"売価 = 定価 ×(1−割引率)。"},
+{c:"公式",q:"速さ × 時間 ＝ □",o:["距離","時間","速さ","平均"],a:0,e:"み・は・じ。速さ×時間=距離。"},
+{c:"公式",q:"距離 ÷ 速さ ＝ □",o:["時間","距離","速さ","道のり"],a:0,e:"距離÷速さ=時間。"},
+{c:"公式",q:"平均速度 ＝ 総距離 ÷ □",o:["総時間","速さの和","区間の数","総距離"],a:0,e:"平均速度=総距離÷総時間（速さの平均ではない）。"},
+{c:"公式",q:"割合 ＝ 比べる量 ÷ □",o:["もとにする量","比べる量","全体の和","100"],a:0,e:"割合=比べる量÷もとにする量。"},
+{c:"公式",q:"p%増 のときは ×（1＋□）",o:["p/100","p","100/p","1−p"],a:0,e:"p%増=×(1+p/100)。20%増→×1.2。"},
+{c:"公式",q:"20%引きを連続で2回行うと ×□",o:["0.64","0.6","0.8","0.96"],a:0,e:"0.8×0.8=0.64。割引は掛け算。"},
+{c:"公式",q:"順列 nPr ＝ n! ÷ □",o:["(n−r)!","r!","r!(n−r)!","n"],a:0,e:"nPr = n!/(n−r)!。"},
+{c:"公式",q:"組合せ nCr ＝ n! ÷ □",o:["r!(n−r)!","(n−r)!","r!","n!"],a:0,e:"nCr = n!/(r!(n−r)!)。"},
+{c:"公式",q:"異なるn個の円順列の総数 ＝ □",o:["(n−1)!","n!","n!/r!","nCr"],a:0,e:"円順列=(n−1)!。"},
+{c:"公式",q:"確率 ＝ □ ÷ 全体の場合の数",o:["その事象の場合の数","全体−1","試行回数","100"],a:0,e:"確率=その事象の場合の数÷全体の場合の数。"},
+{c:"公式",q:"「少なくとも1つ」の確率 ＝ 1 − □",o:["1つも起きない確率","全部起きる確率","余事象の和","0"],a:0,e:"1−（1つも起きない確率）。"},
+{c:"公式",q:"n(A∪B) ＝ n(A)＋n(B) − □",o:["n(A∩B)","n(A∪B)","n(A)×n(B)","0"],a:0,e:"重複を1回引く。"},
+{c:"公式",q:"「どちらでもない」＝ 全体 − □",o:["n(A∪B)","n(A∩B)","n(A)+n(B)","全体"],a:0,e:"少なくとも一方=n(A∪B)。その補集合。"},
+{c:"公式",q:"3割5分 を小数で表すと □",o:["0.35","0.035","3.5","0.305"],a:0,e:"a割b分=0.ab。3割5分=0.35。"}
+];
+
 /* ②⑤ 重複文言を排除して結合（固定＋自動生成＋非言語＋長文） */
 const ALL=(()=>{ const seen=new Set();
-  return [].concat(DATA, GEN, NONVERBAL, LONGSETS).filter(d=>{ if(seen.has(d.q)) return false; seen.add(d.q); return true; });
+  return [].concat(DATA, GEN, NONVERBAL, LONGSETS, FORMULAS).filter(d=>{ if(seen.has(d.q)) return false; seen.add(d.q); return true; });
 })();
 
 /* ===== ロジック ===== */
@@ -737,9 +801,9 @@ let limitSec=0, limitTO=null, autoNext=false, advanceTok=0, mockMode=false;   //
 const uiLimit=()=>{ const b=document.querySelector("#limitseg .on"); return b? +b.dataset.l : 0; };
 const today=()=>Math.floor(Date.now()/86400000);             // 経過日数（SRS用）
 const CAT_COLORS={"多義語":"#4f8cff","二語の関係":"#9b6bff","熟語の成り立ち":"#1fb6a6","同義語":"#2ec27e","反義語":"#ff8a3d","語句の意味":"#e0556e","語句の用法":"#d6a400","空欄補充":"#3aa0ff","並べ替え":"#8b86ff","長文":"#ff6b9d",
-  "推論":"#0ea5e9","割合と比":"#14b8a6","損益算":"#f59e0b","速さ":"#8b5cf6","場合の数":"#ec4899","確率":"#ef4444","集合":"#22c55e"};
+  "推論":"#0ea5e9","割合と比":"#14b8a6","損益算":"#f59e0b","速さ":"#8b5cf6","場合の数":"#ec4899","確率":"#ef4444","集合":"#22c55e","公式":"#64748b"};
 /* 非言語カテゴリ（言語/非言語フィルタ用） */
-const NV_CATS=["推論","割合と比","損益算","速さ","場合の数","確率","集合"];
+const NV_CATS=["推論","割合と比","損益算","速さ","場合の数","確率","集合","公式"];
 
 function renderCats(){
   const ct=$("#catTitle"); if(ct) ct.textContent=`出題カテゴリ（全${ALL.length}問）`;
@@ -1039,6 +1103,17 @@ function renderLong(){
   $("#longBody").querySelectorAll("[data-opt]").forEach(b=>b.onclick=()=>{ const kk=lpi+'-'+lqi; if(lans[kk]!=null) return; const i=+b.dataset.opt; lans[kk]=i; const d={c:"長文",q:`【${set.t}】${q.q}`,o:q.o,a:q.a,e:q.e}; const ok=i===q.a; if(ok) srsCorrect(d.q); else addWeak(d); recordAns(d,ok,0); renderLong(); });
 }
 
+/* ===== 非言語 解法ステップ例題（タブ式）===== */
+let ssp=0;
+function openSolve(){ ssp=0; $("#setup").classList.add("hide"); $("#solve").classList.remove("hide"); renderSolve(); window.scrollTo(0,0); }
+function renderSolve(){
+  const area=SOLVE[ssp];
+  const chips=SOLVE.map((g,i)=>`<button class="chip ${i===ssp?'on':''}" data-sp="${i}">${g.t}</button>`).join("");
+  const cards=area.ex.map((e,j)=>`<div class="card" style="background:var(--card2);margin:0 0 12px"><div style="font-weight:600;margin-bottom:6px">例題${j+1}　${e.q}</div><details><summary style="cursor:pointer;color:var(--accent);font-weight:600">解き方・答えを見る</summary><ol style="margin:10px 0 0;padding-left:20px;line-height:1.95">${e.s.map(x=>`<li>${x}</li>`).join("")}</ol><div style="margin-top:10px;font-weight:700">答え：${e.a}</div></details></div>`).join("");
+  $("#solveBody").innerHTML=`<div class="cats" style="margin-bottom:12px">${chips}</div><div class="meta" style="margin:0 0 10px"><span class="badge" style="background:${CAT_COLORS[area.t]||'#0ea5e9'};color:#fff">${area.t}</span><span class="small">例題で解き方を確認</span></div>${cards}<p class="small" style="opacity:.8">この分野を問題形式で解くには、カテゴリ選択で「${area.t}」を選んでスタート。</p>`;
+  $("#solveBody").querySelectorAll("[data-sp]").forEach(b=>b.onclick=()=>{ ssp=+b.dataset.sp; renderSolve(); window.scrollTo(0,0); });
+}
+
 /* ===== イベント ===== */
 function selQ(){ return ALL.filter(d=>selected.has(d.c)); }
 /* ⑥本番フル模試：選択中から30問・各30秒・通し */
@@ -1052,7 +1127,7 @@ function startMock(){
 /* ⑦未出題優先：解いた回数が少ない順 */
 function unseenOrder(list){ return list.slice().sort((x,y)=>{ const sx=(STATS.qstat[x.q]||{}).s||0, sy=(STATS.qstat[y.q]||{}).s||0; return sx-sy || Math.random()-0.5; }); }
 function startUnseen(){ start(unseenOrder(selQ()), true); }
-function backToSetup(){ advanceTok++; clearInterval(timerInt); clearTimeout(limitTO); $("#quiz").classList.add("hide"); $("#result").classList.add("hide"); $("#cheat").classList.add("hide"); $("#long").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); }
+function backToSetup(){ advanceTok++; clearInterval(timerInt); clearTimeout(limitTO); $("#quiz").classList.add("hide"); $("#result").classList.add("hide"); $("#cheat").classList.add("hide"); $("#long").classList.add("hide"); $("#solve").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); }
 $("#start").onclick=()=>start(selQ());
 $("#startWeak").onclick=()=>start(weakOrder(selQ()), true);
 $("#startWeakList").onclick=()=>{ const due=dueWeak(); const list=due.length?due:STATS.weak; if(list.length) start(list.map(w=>({...w})), true); };  // ③今日の復習優先
@@ -1067,6 +1142,9 @@ $("#cheatHome").onclick=()=>backToSetup();
 /* 長文（タブ式） */
 $("#longBtn").onclick=()=>openLong();
 $("#longHome").onclick=()=>{ $("#long").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); window.scrollTo(0,0); };
+/* 非言語 解法ステップ例題 */
+$("#solveBtn").onclick=()=>openSolve();
+$("#solveHome").onclick=()=>{ $("#solve").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); window.scrollTo(0,0); };
 /* ①制限時間セレクタ */
 $("#limitseg").querySelectorAll("button").forEach(b=>{ b.onclick=()=>{ $("#limitseg").querySelectorAll("button").forEach(x=>x.classList.remove("on")); b.classList.add("on"); limitSec=+b.dataset.l; }; });
 /* ⑧自動で次へ */
