@@ -713,6 +713,17 @@ const ORIGINS=[
 {t:"五十歩百歩",m:"少しの違いはあっても本質は同じ",o:"『孟子』。戦場で五十歩逃げた者が百歩逃げた者を臆病と笑ったが、逃げた点では同じ、という話から。"}
 ];
 
+/* ===== 非言語（数的処理）の解き方まとめ（チートシート用） ===== */
+const NV_TIPS=[
+{t:"推論",items:["条件は<b>表・順序・対応図</b>で見える化。確定する関係だけ書く。","順位は<b>不等号で一列</b>に並べる（「AはBより上」→ A&gt;B）。","うそつき問題は「この人が本当」と<b>仮定して矛盾を探す</b>（背理法）。","「少なくとも」は<b>最小・最大の場合</b>に分けて考える。"]},
+{t:"割合と比",items:["割合 = <b>比べる量 ÷ もとにする量</b>。「〜の」の前がもと。","a割b分 = 0.ab（1割=10%、1分=1%、1厘=0.1%）。","比 a:b は<b>全体を a+b</b> とおくと速い。","p%増=×(1+p/100)、p%引=×(1−p/100)。<b>連続割引は掛け算</b>（1.2×0.8=0.96＝4%減）。"]},
+{t:"損益算",items:["<b>定価 = 原価 ×(1+利益率)</b>。売価 = 定価 ×(1−割引率)。","利益 = 売価 − 原価。","「原価の2割増しで定価」→ 定価 = 原価×1.2。","複雑なら<b>原価を x とおいて方程式</b>を立てる。"]},
+{t:"速さ",items:["<b>速さ×時間=距離</b>（み・は・じ）。まず<b>単位をそろえる</b>。","出会い算＝<b>速さの和</b>、追いつき算＝<b>速さの差</b>で考える。","平均速度 = <b>総距離 ÷ 総時間</b>（速さの単純平均ではない）。","流水算：下り=静水+流速、上り=静水−流速。"]},
+{t:"場合の数",items:["<b>並べる→順列 nPr</b>、<b>選ぶ→組合せ nCr</b>。","nPr = n!/(n−r)!、 nCr = n!/(r!(n−r)!)。","「または」=<b>足す</b>（和の法則）、「続けて」=<b>掛ける</b>（積の法則）。","円順列=(n−1)!、同じものを含む並べ方=n!÷(重複の階乗)。"]},
+{t:"確率",items:["確率 = <b>その場合の数 ÷ 全体の場合の数</b>。","「少なくとも1つ」= <b>1 −（1つも起きない確率）</b>。","「かつ／同時に」独立なら<b>掛ける</b>、「または」排反なら<b>足す</b>。","引いて戻さない（非復元）は<b>2回目の分母が1減る</b>。"]},
+{t:"集合",items:["<b>n(A∪B)=n(A)+n(B)−n(A∩B)</b>（数えすぎた重複を1回引く）。","<b>ベン図</b>で「両方／片方だけ／どちらでもない」を整理。","「少なくとも一方」= 全体 −「どちらでもない」。","3集合は包除原理：Σn(A) −Σn(A∩B) +n(A∩B∩C)。"]}
+];
+
 /* ②⑤ 重複文言を排除して結合（固定＋自動生成＋非言語＋長文） */
 const ALL=(()=>{ const seen=new Set();
   return [].concat(DATA, GEN, NONVERBAL, LONGSETS).filter(d=>{ if(seen.has(d.q)) return false; seen.add(d.q); return true; });
@@ -999,6 +1010,9 @@ function renderCheat(){
   html+=block("語句の意味・慣用句","#e0556e",BANK_MEAN.map(e=>`${e.t}＝${e.m}`));
   /* ★ 由来から覚える 故事成語・四字熟語（丁寧解説） */
   html+=`<div style="margin:0 0 18px"><div class="meta" style="margin:0 0 7px"><span class="badge" style="background:#d6a400;color:#fff">由来で覚える 故事・四字熟語（${ORIGINS.length}）</span></div><div class="review">`+ORIGINS.map(e=>`<div class="ri"><div style="font-weight:700">${e.t} <span class="small" style="font-weight:400">＝ ${e.m}</span></div><div class="small" style="line-height:1.75">〔由来〕${e.o}</div></div>`).join("")+`</div></div>`;
+  /* ★ 非言語（数的処理）の解き方まとめ */
+  html+=`<div style="margin:18px 0 9px"><span class="badge" style="background:#0ea5e9;color:#fff">🔢 非言語の解き方まとめ（公式・コツ）</span></div>`;
+  NV_TIPS.forEach(g=>{ html+=`<div style="margin:0 0 14px"><div class="meta" style="margin:0 0 6px"><span class="badge" style="background:${CAT_COLORS[g.t]||'#0ea5e9'};color:#fff">${g.t}</span></div><ul style="margin:0;padding-left:18px;line-height:1.9">${g.items.map(x=>`<li class="small" style="color:var(--text)">${x}</li>`).join("")}</ul></div>`; });
   body.innerHTML=html;
 }
 
