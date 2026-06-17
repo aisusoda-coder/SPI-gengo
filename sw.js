@@ -1,5 +1,5 @@
 /* SPI言語 一問一答 — オフライン対応 Service Worker */
-const CACHE = 'spi-gengo-v3';
+const CACHE = 'spi-gengo-v4';
 const ASSETS = ['./', './index.html'];
 
 self.addEventListener('install', e => {
