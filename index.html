@@ -76,6 +76,9 @@
   .hl{background:linear-gradient(transparent 58%, rgba(255,214,10,.42) 0);padding:0 2px;border-radius:3px}
   .reasonBtns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
   .reasonBtns .chip{padding:6px 9px;font-size:12px}
+  .solveHead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px}
+  .solveTag{font-size:11px;border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:999px;padding:2px 8px}
+  .solveActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .small{font-size:12px;color:var(--muted)}
   kbd{background:var(--card2);border:1px solid var(--border);border-radius:5px;padding:1px 6px;font-size:11px}
   .opt{transform:translateZ(0)}
@@ -153,6 +156,14 @@
         <button class="btn ghost" id="unseenBtn">🆕 未出題優先</button>
         <button class="btn ghost" id="todayBtn">🎯 今日の10問</button>
         <span class="small" id="weakCount"></span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>🔢 非言語集中</h2>
+      <p class="small" style="margin:0 0 10px">推論・比・損益・速さ・確率・集合・食塩水・仕事算・資料・規則性・精算・年齢・図形を難問中心で出題します。</p>
+      <div class="row" style="margin-top:0">
+        <button class="btn" id="nvHardBtn" style="flex:1">非言語 難問ドリル</button>
+        <button class="btn ghost" id="nvSolveBtn" style="flex:1">解法ステップへ</button>
       </div>
     </div>
     <div class="card">
@@ -822,34 +833,62 @@ const NV_TIPS=[
 {t:"集合",items:["<b>n(A∪B)=n(A)+n(B)−n(A∩B)</b>（数えすぎた重複を1回引く）。","<b>ベン図</b>で「両方／片方だけ／どちらでもない」を整理。","「少なくとも一方」= 全体 −「どちらでもない」。","3集合は包除原理：Σn(A) −Σn(A∩B) +n(A∩B∩C)。"]}
 ];
 
-/* ===== 非言語：解法ステップ付き例題（タブ式） ===== */
+/* ===== 非言語：解法ステップ付き例題（難問型・タブ式） ===== */
 const SOLVE=[
-{t:"割合と比", ex:[
- {q:"ある品物を定価の2割引で買ったら1600円だった。定価はいくらか。", s:["定価を x 円とおく。","2割引＝定価×0.8 なので 0.8x = 1600。","x = 1600 ÷ 0.8 = 2000。"], a:"2000円"},
- {q:"40人のクラスで、男子は全体の55%である。男子は何人か。", s:["全体40人の55% を求める。","40 × 0.55 = 22。"], a:"22人"}
-]},
 {t:"推論", ex:[
- {q:"A〜Dの身長について、AはBより高く、CはAより高く、DはBより低い。高い順に並べよ。", s:["C＞A（CはAより高い）と A＞B（AはBより高い）→ C＞A＞B。","D＜B（DはBより低い）を加える → C＞A＞B＞D。"], a:"C＞A＞B＞D"}
+ {q:"A〜Fを順位づける。AはDより上、BはAより下でEより上、CはBより上、FはCより下でDより上。必ず言えるものは？", tag:"順位・半順序", trap:"全部の順位を決めにいかない", s:["条件を矢印でつなぐ。C＞B＞E、A＞D、C＞F＞D。","確定してつながる鎖だけを見る。C＞B＞E なので C＞E は必ず成立。","AとC、FとB、DとEは相対順が確定しない。選択肢は『必ず』だけを選ぶ。"], a:"CはEより上"},
+ {q:"P・Q・Rの3箱に赤・青・白が1つずつ入る。ラベルはすべて誤り。Pのラベルは赤、Qは白、Rは青。さらにPには青が入っていない。Pの中身は？", tag:"真偽・消去", trap:"ラベル誤りを1箱ずつ反映", s:["Pのラベルは赤で誤りなので、Pは赤ではない。","追加条件でPは青でもない。","赤でも青でもないので、Pは白。残りも Q=青、R=赤 で全ラベル誤りになり整合する。"], a:"白"},
+ {q:"A・B・C・Dの発言のうち、真実は1つだけ。A『Bは犯人』、B『Cは犯人』、C『私は犯人ではない』、D『Aは犯人ではない』。犯人は1人。犯人は？", tag:"仮定検証", trap:"発言数を数える", s:["犯人を1人ずつ仮定し、真の発言数を数える。","A犯人なら A偽・B偽・C真・D偽で真実は1つ。条件に合う。","B犯人ならA真・B偽・C真・D真で3つ。C犯人ならB真・C偽・D真で2つ。D犯人ならC真・D真で2つ。"], a:"A"}
+]},
+{t:"割合と比", ex:[
+ {q:"A:B=3:5、B:C=10:7。A+C=169のとき、Bはいくつか。", tag:"連比", trap:"共通項Bをそろえる", s:["Bをそろえる。A:B=6:10、B:C=10:7。","A:B:C=6:10:7。A+C=13単位=169。","1単位=13。B=10単位=130。"], a:"130"},
+ {q:"ある数を20%増やした後、増えた値から25%減らすと、最初より360小さくなった。最初の数は？", tag:"増減の連続", trap:"20−25=-5% としない", s:["20%増は×1.2、そこから25%減は×0.75。","最終は 1.2×0.75=0.9 倍。最初より10%小さい。","0.1x=360 なので x=3600。"], a:"3600"},
+ {q:"全体をA:B:C=2:3:5に分ける。Bから12をCへ移すと、B:C=3:7になった。全体はいくつか。", tag:"移動後の比", trap:"全体不変で置く", s:["全体を10単位とし、1単位をxとする。B=3x、C=5x。","移動後は B=3x−12、C=5x+12。比が3:7なので 7(3x−12)=3(5x+12)。","21x−84=15x+36、6x=120、x=20。全体=10x=200。"], a:"200"}
 ]},
 {t:"損益算", ex:[
- {q:"原価500円の品に2割の利益を見込んで定価をつけた。定価はいくらか。", s:["定価 = 原価 ×(1+利益率)。","500 ×(1+0.2) = 500 × 1.2 = 600。"], a:"600円"},
- {q:"原価800円の品を定価1000円とし、定価の1割引で売った。利益はいくらか。", s:["売価 = 定価 ×(1−0.1) = 1000 × 0.9 = 900。","利益 = 売価 − 原価 = 900 − 800 = 100。"], a:"100円"}
+ {q:"定価の2割引で売ると原価の12%の利益、3割引で売ると240円の損失。原価はいくらか。", tag:"連立", trap:"利益率は原価基準", s:["定価をp、原価をcとする。2割引は0.8p=1.12c。","3割引は0.7p=c−240。1つ目から p=1.4c。","0.7×1.4c=0.98c=c−240。0.02c=240。c=12000。"], a:"12000円"},
+ {q:"ある商品を定価の15%引きで売っても原価の19%の利益が出る。定価が5600円なら原価はいくらか。", tag:"割引後利益", trap:"売価から原価へ戻す", s:["売価=5600×0.85=4760。","原価の19%利益なので、売価=原価×1.19。","原価=4760÷1.19=4000。"], a:"4000円"},
+ {q:"原価に4割の利益を見込んで定価をつけたが、売れ残ったので定価の25%引きで売った。利益は原価の何%か。", tag:"利益率変換", trap:"割引率は定価基準", s:["原価を100とおく。定価は140。","25%引きの売価は140×0.75=105。","利益は105−100=5。原価比で5%。"], a:"5%"}
 ]},
 {t:"速さ", ex:[
- {q:"時速60kmで2時間30分走ると、何km進むか。", s:["2時間30分 = 2.5時間。","距離 = 速さ × 時間 = 60 × 2.5 = 150。"], a:"150km"},
- {q:"1.2km離れたAとBが向かい合って同時に歩き出す。Aは分速50m、Bは分速70m。何分で出会うか。", s:["距離 = 1200m。近づく速さ = 50+70 = 120 m/分。","時間 = 距離 ÷ 速さの和 = 1200 ÷ 120 = 10。"], a:"10分"}
+ {q:"Aは分速90mで出発し、12分後にBが分速120mで追う。Bが追いついてすぐ同じ速さで引き返すと、B出発から何分後に出発地点へ戻るか。", tag:"追いつき＋往復", trap:"追いつき後の戻り時間を忘れない", s:["Aの先行距離は90×12=1080m。","縮まる速さは120−90=30m/分なので、追いつきは1080÷30=36分後。","追いつき地点は120×36=4320m。戻りは4320÷120=36分。合計72分。"], a:"72分後"},
+ {q:"同じ道を行きは時速40km、帰りは時速60kmで往復した。往復の平均時速は？", tag:"平均速度", trap:"速さの単純平均ではない", s:["距離を片道120kmなど、40と60の公倍数でおく。","行き時間=120/40=3時間、帰り時間=120/60=2時間。総距離240km、総時間5時間。","平均=240÷5=48km/h。"], a:"時速48km"},
+ {q:"長さ180mの列車が時速72kmで走り、長さ420mの橋を渡り始めてから渡り終えるまで何秒かかるか。", tag:"列車通過", trap:"列車の長さも足す", s:["時速72km=秒速20m。","渡り終えるには、列車の先頭が橋420mと列車自身180mの合計600mを進む。","600÷20=30秒。"], a:"30秒"}
 ]},
 {t:"場合の数", ex:[
- {q:"5人から3人を選んで一列に並べる方法は何通りか。", s:["順番ありなので順列 nPr を使う。","5P3 = 5 × 4 × 3 = 60。"], a:"60通り"},
- {q:"5人から3人を選ぶ組合せは何通りか。", s:["順番なしなので組合せ nCr を使う。","5C3 = (5×4×3) ÷ (3×2×1) = 10。"], a:"10通り"}
+ {q:"0〜5の数字から異なる4個を使う4桁整数。3000以上かつ偶数は何個か。", tag:"桁制限", trap:"先頭0・末尾偶数・重複禁止", s:["千の位は3,4,5。一の位は0,2,4。","千=3なら末尾は0,2,4の3通り、中央2桁は残り4個から順に選び12通りで36。","千=4なら末尾は0,2の2通りで24。千=5なら3通りで36。合計96。"], a:"96個"},
+ {q:"男子4人・女子3人を一列に並べる。女子3人が隣り合わない並べ方は何通りか。", tag:"隣り合わない", trap:"先に男子を並べて隙間に女子", s:["男子4人を並べる：4!通り。","男子の間と両端の隙間は5か所。女子3人を隣り合わないように入れるには5P3通り。","合計 4!×5P3 = 24×60 = 1440。"], a:"1440通り"},
+ {q:"A,B,C,D,E,Fから4人を選ぶ。ただしAとBは同時に選ばず、Cは必ず選ぶ。何通りか。", tag:"条件付き組合せ", trap:"必ず選ぶ人を先に固定", s:["Cを固定して、残りA,B,D,E,Fから3人選ぶ。","制限なしなら5C3=10通り。","AとBを同時に含む場合は、A,Bと残りD,E,Fから1人で3通り。10−3=7。"], a:"7通り"}
 ]},
 {t:"確率", ex:[
- {q:"サイコロを1回振って、3以上の目が出る確率は。", s:["3以上 = 3,4,5,6 の4通り。","4 ÷ 6 = 2/3。"], a:"2/3"},
- {q:"コインを2回投げて、少なくとも1回表が出る確率は。", s:["余事象＝2回とも裏 = 1/2 × 1/2 = 1/4。","1 − 1/4 = 3/4。"], a:"3/4"}
+ {q:"赤4・白3・青2の9個から同時に3個。3色すべて異なる確率は？", tag:"組合せ確率", trap:"同時取り出しは順番なし", s:["全体は9個から3個選ぶので C(9,3)=84。","3色異なるには赤1・白1・青1。4×3×2=24。","確率=24/84=2/7。"], a:"2/7"},
+ {q:"当たり3本・はずれ7本のくじから2本を続けて引く。少なくとも1本当たる確率は？ 戻さない。", tag:"余事象", trap:"2回目の分母が減る", s:["余事象は2本ともはずれ。","P(はずれ2本)=7/10×6/9=7/15。","少なくとも1本当たり=1−7/15=8/15。"], a:"8/15"},
+ {q:"サイコロ2個を振る。出た目の和が8以上になる確率は？", tag:"表で数える", trap:"条件を満たす組を漏らさない", s:["全体は6×6=36通り。","和が8以上の個数は、8:5通り、9:4、10:3、11:2、12:1。合計15。","確率=15/36=5/12。"], a:"5/12"}
 ]},
 {t:"集合", ex:[
- {q:"30人のうち英語好きが18人、数学好きが15人、両方好きが8人。どちらか一方でも好きな人は何人か。", s:["n(A∪B) = n(A)+n(B) − n(A∩B)。","18 + 15 − 8 = 25。"], a:"25人"},
- {q:"（上の続き）どちらも好きでない人は何人か。", s:["全体 − どちらか好き = 30 − 25。","= 5。"], a:"5人"}
+ {q:"120人。A=72、B=66、C=54、AB=38、BC=30、CA=28、ABC=16。ちょうど1つだけ選んだ人は？", tag:"3集合", trap:"二重部分から三重を引く", s:["ちょうど1つ = (A+B+C)−2(AB+BC+CA)+3ABC。","A+B+C=192、AB+BC+CA=96、ABC=16。","192−2×96+3×16=48。"], a:"48人"},
+ {q:"80人中、どれも選ばない人は5人。2科目以上を選んだ人が55人なら、ちょうど1科目だけ選んだ人は何人か。", tag:"集合の人数分解", trap:"少なくとも1科目を先に出す", s:["少なくとも1科目を選んだ人は80−5=75人。","少なくとも1科目 = ちょうど1科目 + 2科目以上。","ちょうど1科目 = 75−55=20。"], a:"20人"},
+ {q:"200人にA,Bを調査。Aだけが58人、Bだけが47人、どちらでもないが39人。両方は何人か。", tag:"ベン図逆算", trap:"全体から既知領域を引く", s:["全体は Aだけ + Bだけ + 両方 + どちらでもない。","両方をxとすると 58+47+x+39=200。","x=200−144=56。"], a:"56人"}
+]},
+{t:"食塩水濃度", ex:[
+ {q:"8%の食塩水300gから水を蒸発させ、20%の食塩水100gを加えたら16%になった。蒸発させた水は何gか。", tag:"蒸発＋混合", trap:"蒸発で食塩は減らない", s:["最初の食塩は300×0.08=24g。水をxg蒸発させても食塩は24g。","20%の100gを加えるので食塩はさらに20g、合計44g。全体は300−x+100=400−x。","44/(400−x)=0.16。400−x=275。x=125。"], a:"125g"},
+ {q:"6%の食塩水500gに食塩を加えて10%にしたい。食塩を何g加えるか。", tag:"食塩追加", trap:"加えた食塩は分子にも分母にも入る", s:["最初の食塩は500×0.06=30g。","食塩をxg加えると、食塩は30+x、全体は500+x。","(30+x)/(500+x)=0.10。30+x=50+0.1x。0.9x=20。x=200/9。"], a:"200/9g"},
+ {q:"8%の食塩水Aと18%の食塩水Bを混ぜて15%の食塩水600gを作る。Bは何g必要か。", tag:"天びん法", trap:"濃い液の比率が大きい", s:["Bをxg、Aを600−xgとする。","食塩量で式を作る。0.18x+0.08(600−x)=0.15×600。","0.10x+48=90。x=420。"], a:"420g"}
+]},
+{t:"仕事算", ex:[
+ {q:"Aは12日、Bは18日で終える。Aが3日、Bが3日働いた後、残りをCが7日で終えた。Cだけなら何日か。", tag:"途中参加", trap:"仕事量を1で固定", s:["Aの3日分は3/12=1/4、Bの3日分は3/18=1/6。","進んだ量は1/4+1/6=5/12。残りは7/12。","Cは7日で7/12進めたので1日量は1/12。Cだけなら12日。"], a:"12日"},
+ {q:"A,B,Cで行うと6日、Aだけなら18日、Bだけなら12日。Cだけなら何日か。", tag:"差分", trap:"全員の1日量からA,Bを引く", s:["3人の1日量は1/6。Aは1/18、Bは1/12。","Cの1日量=1/6−1/18−1/12。通分して6/36−2/36−3/36=1/36。","Cだけなら36日。"], a:"36日"},
+ {q:"ある仕事をAが4日、Bが6日行うと全体の5/6が終わる。Aだけなら12日。Bだけなら何日か。", tag:"未知の作業効率", trap:"既知のAを先に引く", s:["Aの4日分は4/12=1/3。","Bの6日分は5/6−1/3=1/2。","Bは6日で1/2なので1日量は1/12。Bだけなら12日。"], a:"12日"}
+]},
+{t:"平均・資料", ex:[
+ {q:"5人の平均点は68点。あと2人を加えると7人平均が72点になった。加わった2人の平均点は？", tag:"平均との差", trap:"平均同士を直接平均しない", s:["5人合計は68×5=340。","7人合計は72×7=504。","加わった2人の合計は164。平均は164÷2=82。"], a:"82点"},
+ {q:"A商品の売上は前年より20%増、B商品は20%減。前年売上はA:B=2:3。全体売上は前年に比べて何%変化したか。", tag:"加重平均", trap:"増減率を単純平均しない", s:["前年をA=2、B=3とおく。全体は5。","今年はA=2×1.2=2.4、B=3×0.8=2.4。合計4.8。","4.8/5=0.96なので4%減。"], a:"4%減"},
+ {q:"ある表で、人数はA区40人・B区60人。平均利用回数はA区12回・B区8回。全体平均は？", tag:"重み付き平均", trap:"12と8の単純平均にしない", s:["全体合計回数を出す。A区は40×12=480、B区は60×8=480。","合計960回、人数100人。","全体平均=960÷100=9.6回。"], a:"9.6回"}
+]},
+{t:"整数・規則性", ex:[
+ {q:"2桁の整数がある。十の位と一の位の和は11。十の位と一の位を入れ替えると元の数より27小さい。元の数は？", tag:"位取り", trap:"2桁整数を10a+bで置く", s:["元の数を10a+bとする。a+b=11。","入れ替え後は10b+a。元より27小さいので 10a+b−(10b+a)=27。","9a−9b=27 なので a−b=3。a+b=11と合わせて a=7,b=4。"], a:"74"},
+ {q:"等差数列 5, 9, 13, ... の第25項は？", tag:"等差数列", trap:"第n項はn−1回進む", s:["初項5、公差4。","第25項=5+(25−1)×4。","5+96=101。"], a:"101"},
+ {q:"1から80までの整数のうち、3でも5でも割り切れない数はいくつか。", tag:"倍数の包除", trap:"割り切れる数を先に数えて引く", s:["3の倍数は⌊80/3⌋=26、5の倍数は16。","15の倍数は⌊80/15⌋=5。3または5で割り切れる数は26+16−5=37。","割り切れない数は80−37=43。"], a:"43個"}
 ]}
 ];
 
@@ -907,22 +946,24 @@ NONVERBAL.push(
 {c:"仕事算",q:"Aは12日、Bは20日で終える仕事がある。AとBが3日一緒に働いた後、残りをCが6日で終えた。Cだけなら何日で終える？",o:["10日","8日","12日","15日","20日"],a:0,e:"A+Bの3日分は3(1/12+1/20)=3×2/15=2/5。残り3/5をCが6日で行うので、Cの1日量は1/10。Cだけなら<b>10日</b>。"},
 {c:"仕事算",q:"Aは8日、Bは12日で終える仕事がある。Aが2日、Bが3日働いた後、残りをCが5日で終えた。Cだけなら何日で終える？",o:["10日","8日","12日","15日","20日"],a:0,e:"Aは2/8=1/4、Bは3/12=1/4。合計1/2、残り1/2。Cが5日で1/2を進めるので、Cの1日量は1/10。Cだけなら<b>10日</b>。"}
 );
-SOLVE.push(
-{t:"食塩水濃度", ex:[
- {q:"8%の食塩水250gに含まれる食塩は何gか。", s:["食塩 = 食塩水 × 濃度(小数)。","250 × 0.08 = 20。"], a:"20g"},
- {q:"食塩30gを水170gに溶かした。濃度は何%か。", s:["全体 = 30 + 170 = 200g。","濃度 = 食塩 ÷ 全体 ×100 = 30÷200×100 = 15。"], a:"15%"},
- {q:"10%の食塩水200gに水を加えて5%にしたい。水を何g加えるか。", s:["食塩の量は変わらない：200×0.1 = 20g。","5%にするには全体 = 20 ÷ 0.05 = 400g。","加える水 = 400 − 200 = 200。"], a:"200g"}
-]},
-{t:"仕事算", ex:[
- {q:"ある仕事をAは6日、Bは12日で終える。2人で行うと何日かかるか。", s:["全体を1とする。Aの1日 = 1/6、Bの1日 = 1/12。","2人の1日 = 1/6 + 1/12 = 3/12 = 1/4。","日数 = 1 ÷ (1/4) = 4。"], a:"4日"},
- {q:"1人で15日かかる仕事を5日で終えるには何人必要か（全員同じ能力）。", s:["全体の仕事量 = 1人 ×15日 = 15人日。","5日で終えるには 15 ÷ 5 = 3人。"], a:"3人"}
-]}
+NONVERBAL.push(
+{c:"平均・資料",q:"A店は40人が平均12個、B店は60人が平均8個購入した。2店全体の平均購入数は？",o:["9.6個","10個","9個","10.4個","8.8個"],a:0,e:"平均の平均ではなく合計で考える。Aは40×12=480、Bは60×8=480。合計960個÷100人=<b>9.6個</b>。"},
+{c:"平均・資料",q:"前年売上はA:B=2:3。Aは20%増、Bは20%減。全体売上は前年よりどうなった？",o:["4%減","変化なし","4%増","8%減","10%減"],a:0,e:"前年をA=2、B=3と置く。今年は2×1.2=2.4、3×0.8=2.4、合計4.8。前年5に対して0.96倍なので<b>4%減</b>。"},
+{c:"整数・規則性",q:"2桁の整数がある。十の位と一の位の和は11。数字を入れ替えると元の数より27小さい。元の数は？",o:["74","83","65","92","56"],a:0,e:"元を10a+bとする。a+b=11、(10a+b)−(10b+a)=27よりa−b=3。解くとa=7,b=4で<b>74</b>。"},
+{c:"整数・規則性",q:"1から80までの整数のうち、3でも5でも割り切れない数はいくつ？",o:["43個","37個","42個","48個","45個"],a:0,e:"3の倍数26、5の倍数16、15の倍数5。3または5は26+16−5=37。割り切れない数は80−37=<b>43</b>。"},
+{c:"料金精算",q:"5人で会食し、Aだけが全額14000円を支払った。A・B・Cは通常額、Dは通常額の半額、Eは無料とする。BとCはAにそれぞれいくら払う？",o:["4000円","3500円","4500円","3000円","5000円"],a:0,e:"負担単位はA,B,Cが各1、Dが0.5、Eが0で合計3.5単位。通常額は14000÷3.5=<b>4000円</b>。BとCは自分の負担分4000円をAへ払う。"},
+{c:"年齢算",q:"現在、父は子の4倍の年齢。12年後には父は子の2倍になる。現在の子の年齢は？",o:["6歳","10歳","8歳","12歳","16歳"],a:0,e:"子をx歳、父を4x歳。12年後に 4x+12=2(x+12)。4x+12=2x+24、2x=12、x=<b>6歳</b>。"},
+{c:"図形",q:"縦12cm、横18cmの長方形から、四隅に同じ正方形を切り取り、ふたのない箱を作る。切り取る正方形の一辺を3cmにすると体積は？",o:["216cm³","324cm³","180cm³","270cm³","144cm³"],a:0,e:"高さは3cm。底面は(12−6)×(18−6)=6×12=72cm²。体積は72×3=<b>216cm³</b>。"},
+{c:"図形",q:"半径6cmの円の面積から、中心角120度のおうぎ形の面積を引いた残りは？（πはそのまま）",o:["24πcm²","12πcm²","18πcm²","30πcm²","36πcm²"],a:0,e:"円全体は36π。120度のおうぎ形は36π×120/360=12π。残りは<b>24π</b>。"}
 );
-SOLVE.find(g=>g.t==="割合と比").ex.push({q:"定価3000円の品を2割引にし、さらに1割引にした。最終価格は？", s:["割引は順に掛ける。","3000 × 0.8 × 0.9 = 2160。"], a:"2160円"});
-SOLVE.find(g=>g.t==="速さ").ex.push({q:"兄が分速60mで出発し、10分後に弟が分速80mで追う。弟は何分で追いつくか。", s:["兄の先行距離 = 60×10 = 600m。","縮まる速さ = 80 − 60 = 20 m/分。","追いつく時間 = 600 ÷ 20 = 30。"], a:"30分"});
 NV_TIPS.push(
 {t:"食塩水濃度",items:["<b>濃度(%) = 食塩 ÷ 食塩水全体 ×100</b>（分母は水ではなく全体）。","<b>食塩 = 食塩水 × 濃度(小数)</b>。混ぜても食塩の総量は不変。","水を加えても<b>食塩の量は変わらない</b>→食塩を固定して全体を計算。","混ぜる問題は<b>食塩の合計 ÷ 食塩水の合計</b>。"]},
-{t:"仕事算",items:["全体の仕事を<b>1</b>とおく。「n日で終わる」→1日あたり<b>1/n</b>。","協力したら<b>1日あたりの量を足す</b>。","かかる日数 = <b>1 ÷（1日あたりの合計量）</b>。","人数×日数 =<b>仕事量（人日）</b>で考えてもよい。"]}
+{t:"仕事算",items:["全体の仕事を<b>1</b>とおく。「n日で終わる」→1日あたり<b>1/n</b>。","協力したら<b>1日あたりの量を足す</b>。","かかる日数 = <b>1 ÷（1日あたりの合計量）</b>。","人数×日数 =<b>仕事量（人日）</b>で考えてもよい。"]},
+{t:"平均・資料",items:["平均は<b>合計÷個数</b>。平均同士を単純平均しない。","人数や売上比が違うときは<b>重み付き平均</b>で処理。","増減率は基準量を置き、今年・前年などの合計で比較する。"]},
+{t:"整数・規則性",items:["2桁整数は<b>10a+b</b>、入れ替えは10b+a。","倍数問題は包除原理で『割り切れる数』を数えて全体から引く。","等差数列は第n項 = 初項+(n−1)×公差。"]},
+{t:"料金精算",items:["まず負担単位を置く。半額なら0.5単位、無料なら0単位。","立替者も自分の負担分は払う。返金額と総額を混同しない。","割り勘は『誰が最終的にいくら負担するか』を表にする。"]},
+{t:"年齢算",items:["現在をxで置き、n年後は全員に同じnを足す。","倍数関係は現在と未来で式を分ける。","年齢差は時間が経っても変わらない。"]},
+{t:"図形",items:["立体は底面積×高さ。切り取り問題は残る縦横を先に出す。","円・おうぎ形は中心角/360を掛ける。","面積・体積は単位を最後に確認する。"]}
 );
 
 /* ===== 計算問題を毎回ランダム数字で自動生成（答えを暗記できない・実質無限） ===== */
@@ -993,9 +1034,10 @@ let limitSec=0, currentLimitSec=0, limitTO=null, autoNext=false, advanceTok=0, m
 const uiLimit=()=>{ const b=document.querySelector("#limitseg .on"); return b? +b.dataset.l : 0; };
 const today=()=>Math.floor(Date.now()/86400000);             // 経過日数（SRS用）
 const CAT_COLORS={"多義語":"#4f8cff","二語の関係":"#9b6bff","熟語の成り立ち":"#1fb6a6","同義語":"#2ec27e","反義語":"#ff8a3d","語句の意味":"#e0556e","語句の用法":"#d6a400","空欄補充":"#3aa0ff","並べ替え":"#8b86ff","長文":"#ff6b9d",
-  "推論":"#0ea5e9","割合と比":"#14b8a6","損益算":"#f59e0b","速さ":"#8b5cf6","場合の数":"#ec4899","確率":"#ef4444","集合":"#22c55e","公式":"#64748b","食塩水濃度":"#06b6d4","仕事算":"#a855f7"};
+  "推論":"#0ea5e9","割合と比":"#14b8a6","損益算":"#f59e0b","速さ":"#8b5cf6","場合の数":"#ec4899","確率":"#ef4444","集合":"#22c55e","公式":"#64748b","食塩水濃度":"#06b6d4","仕事算":"#a855f7",
+  "平均・資料":"#0f766e","整数・規則性":"#7c3aed","料金精算":"#ca8a04","年齢算":"#db2777","図形":"#2563eb"};
 /* 非言語カテゴリ（言語/非言語フィルタ用） */
-const NV_CATS=["推論","割合と比","損益算","速さ","場合の数","確率","集合","食塩水濃度","仕事算"];
+const NV_CATS=["推論","割合と比","損益算","速さ","場合の数","確率","集合","食塩水濃度","仕事算","平均・資料","整数・規則性","料金精算","年齢算","図形"];
 function questionLimit(d){
   if(!mockMode) return limitSec;
   if(d.c==="長文") return 120;
@@ -1228,9 +1270,9 @@ function loadStats(){
       const o=JSON.parse(localStorage.getItem(OLDKEY));
       if(o) s={cat:o.cat||{},hist:o.hist||[],weak:(o.weak||[]).map(w=>({...w,lv:0,due:0})),qstat:{}};
     }
-    s=s||{}; s.cat=s.cat||{}; s.hist=s.hist||[]; s.weak=s.weak||[]; s.qstat=s.qstat||{}; s.reasons=s.reasons||{};
+    s=s||{}; s.cat=s.cat||{}; s.hist=s.hist||[]; s.weak=s.weak||[]; s.qstat=s.qstat||{}; s.reasons=s.reasons||{}; s.solveDone=s.solveDone||{};
     return s;
-  }catch(e){ return {cat:{},hist:[],weak:[],qstat:{},reasons:{}} }
+  }catch(e){ return {cat:{},hist:[],weak:[],qstat:{},reasons:{},solveDone:{}} }
 }
 function saveStats(){ try{localStorage.setItem(SKEY,JSON.stringify(STATS))}catch(e){} }
 let STATS=loadStats();
@@ -1331,7 +1373,7 @@ function renderStats(){
   }
   box.innerHTML=html;
   const rb=$("#resetStats");
-  if(rb) rb.onclick=()=>{ if(confirm("学習記録をすべて消去しますか？（苦手リストも消えます）")){ STATS={cat:{},hist:[],weak:[],qstat:{}}; saveStats(); clearSession(); renderStats(); } };
+  if(rb) rb.onclick=()=>{ if(confirm("学習記録をすべて消去しますか？（苦手リストも消えます）")){ STATS={cat:{},hist:[],weak:[],qstat:{},reasons:{},solveDone:{}}; saveStats(); clearSession(); renderStats(); } };
 }
 /* ⑦前回の続き（再開カード） */
 function renderResume(){
@@ -1394,13 +1436,29 @@ function renderLong(){
 
 /* ===== 非言語 解法ステップ例題（タブ式）===== */
 let ssp=0;
+function solveDoneKey(t,i){ return `${t}#${i}`; }
+function solvedSteps(){ STATS.solveDone=STATS.solveDone||{}; return STATS.solveDone; }
 function openSolve(){ ssp=0; $("#setup").classList.add("hide"); $("#solve").classList.remove("hide"); renderSolve(); window.scrollTo(0,0); }
 function renderSolve(){
   const area=SOLVE[ssp];
+  const done=solvedSteps();
+  const total=SOLVE.reduce((n,g)=>n+g.ex.length,0);
+  const doneN=Object.keys(done).filter(k=>done[k]).length;
   const chips=SOLVE.map((g,i)=>`<button class="chip ${i===ssp?'on':''}" data-sp="${i}">${g.t}</button>`).join("");
-  const cards=area.ex.map((e,j)=>`<div class="card" style="background:var(--card2);margin:0 0 12px"><div style="font-weight:600;margin-bottom:6px">例題${j+1}　${e.q}</div><details><summary style="cursor:pointer;color:var(--accent);font-weight:600">解き方・答えを見る</summary><ol style="margin:10px 0 0;padding-left:20px;line-height:1.95">${e.s.map(x=>`<li>${x}</li>`).join("")}</ol><div style="margin-top:10px;font-weight:700">答え：${e.a}</div></details></div>`).join("");
-  $("#solveBody").innerHTML=`<div class="cats" style="margin-bottom:12px">${chips}</div><div class="meta" style="margin:0 0 10px"><span class="badge" style="background:${CAT_COLORS[area.t]||'#0ea5e9'};color:#fff">${area.t}</span><span class="small">例題で解き方を確認</span></div>${cards}<p class="small" style="opacity:.8">この分野を問題形式で解くには、カテゴリ選択で「${area.t}」を選んでスタート。</p>`;
+  const cards=area.ex.map((e,j)=>{
+    const k=solveDoneKey(area.t,j), checked=!!done[k];
+    return `<div class="card" style="background:var(--card2);margin:0 0 12px">
+      <div class="solveHead"><span style="font-weight:700">例題${j+1}</span>${e.tag?`<span class="solveTag">${e.tag}</span>`:""}${checked?`<span class="solveTag" style="color:var(--ok);border-color:var(--ok)">理解済み</span>`:""}</div>
+      <div style="font-weight:600;margin-bottom:6px">${e.q}</div>
+      ${e.trap?`<div class="small" style="margin:0 0 8px">落とし穴: ${e.trap}</div>`:""}
+      <details><summary style="cursor:pointer;color:var(--accent);font-weight:600">解き方・答えを見る</summary><ol style="margin:10px 0 0;padding-left:20px;line-height:1.95">${e.s.map(x=>`<li>${x}</li>`).join("")}</ol><div style="margin-top:10px;font-weight:700">答え：${e.a}</div></details>
+      <div class="solveActions"><button class="chip" data-solved="${j}">${checked?"理解済みを解除":"理解済みにする"}</button><button class="chip" data-practice="${area.t}">この分野を解く</button></div>
+    </div>`;
+  }).join("");
+  $("#solveBody").innerHTML=`<div class="cats" style="margin-bottom:12px">${chips}</div><div class="meta" style="margin:0 0 10px"><span class="badge" style="background:${CAT_COLORS[area.t]||'#0ea5e9'};color:#fff">${area.t}</span><span class="small">解法マスター ${doneN}/${total}</span></div>${cards}<p class="small" style="opacity:.8">例題で型をつかんだら「この分野を解く」で実戦問題へ進めます。</p>`;
   $("#solveBody").querySelectorAll("[data-sp]").forEach(b=>b.onclick=()=>{ ssp=+b.dataset.sp; renderSolve(); window.scrollTo(0,0); });
+  $("#solveBody").querySelectorAll("[data-solved]").forEach(b=>b.onclick=()=>{ const i=+b.dataset.solved, k=solveDoneKey(area.t,i); const d=solvedSteps(); d[k]=!d[k]; saveStats(); renderSolve(); });
+  $("#solveBody").querySelectorAll("[data-practice]").forEach(b=>b.onclick=()=>{ const list=ALL.filter(d=>d.c===b.dataset.practice); if(list.length) start(weakOrder(list), true); });
 }
 
 /* ===== フラッシュカード（再生＋方向切替）===== */
@@ -1479,6 +1537,10 @@ function todayList(){
   return out.slice(0,10);
 }
 function startToday(){ const list=todayList(); if(list.length) start(list,true); }
+function startNvHard(){
+  const list=weakOrder(ALL.filter(d=>NV_CATS.includes(d.c)&&difficultyOf(d)==="super"));
+  if(list.length) start(list,true);
+}
 function backToSetup(){ advanceTok++; clearInterval(timerInt); clearTimeout(limitTO); $("#quiz").classList.add("hide"); $("#result").classList.add("hide"); $("#cheat").classList.add("hide"); $("#long").classList.add("hide"); $("#solve").classList.add("hide"); $("#flash").classList.add("hide"); $("#setup").classList.remove("hide"); renderStats(); }
 $("#start").onclick=()=>start(selQ());
 $("#startWeak").onclick=()=>start(weakOrder(selQ()), true);
@@ -1510,6 +1572,8 @@ $("#autoNext").onchange=e=>{ autoNext=e.target.checked; };
 $("#mockBtn").onclick=()=>startMock();
 $("#unseenBtn").onclick=()=>startUnseen();
 $("#todayBtn").onclick=()=>startToday();
+$("#nvHardBtn").onclick=()=>startNvHard();
+$("#nvSolveBtn").onclick=()=>openSolve();
 document.addEventListener("keydown",e=>{
   if(!$("#quiz").classList.contains("hide")){
     if(["1","2","3","4","5","6"].includes(e.key)){ const i=+e.key-1; const b=$("#opts").children[i]; if(b&&!answered)choose(i); }
@@ -1549,7 +1613,10 @@ $("#importFile").onchange=e=>{
       (inc.weak||[]).forEach(x=>{ if(x&&x.q&&!weak.some(y=>y.q===x.q)) weak.push({lv:0,due:0,...x}); });
       const qstat=Object.assign({},STATS.qstat||{});   // ②問題単位の記録も合算
       Object.keys(inc.qstat||{}).forEach(q=>{ const a=qstat[q]||{s:0,c:0,ms:0}, b=inc.qstat[q]; qstat[q]={s:a.s+(b.s||0), c:a.c+(b.c||0), ms:b.ms||a.ms}; });
-      STATS={cat:cat,hist:hist,weak:weak.slice(-400),qstat:qstat}; saveStats(); renderStats();
+      const reasons=Object.assign({},STATS.reasons||{});
+      Object.keys(inc.reasons||{}).forEach(q=>{ const a=reasons[q]||{}, b=inc.reasons[q]||{}; Object.keys(b).forEach(k=>a[k]=(a[k]||0)+(b[k]||0)); reasons[q]=a; });
+      const solveDone=Object.assign({},STATS.solveDone||{},inc.solveDone||{});
+      STATS={cat:cat,hist:hist,weak:weak.slice(-400),qstat:qstat,reasons:reasons,solveDone:solveDone}; saveStats(); renderStats();
       alert("記録を読み込みました（既存の記録と合算）。");
     }catch(err){ alert("読み込みに失敗しました。書き出した SPI学習記録.json を選んでください。"); }
     $("#importFile").value="";
