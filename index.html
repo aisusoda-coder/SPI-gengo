@@ -1408,6 +1408,11 @@ function renderCheat(){
   /* ★ 非言語（数的処理）の解き方まとめ */
   html+=`<div style="margin:18px 0 9px"><span class="badge" style="background:#0ea5e9;color:#fff">🔢 非言語の解き方まとめ（公式・コツ）</span></div>`;
   NV_TIPS.forEach(g=>{ html+=`<div style="margin:0 0 14px"><div class="meta" style="margin:0 0 6px"><span class="badge" style="background:${CAT_COLORS[g.t]||'#0ea5e9'};color:#fff">${g.t}</span></div><ul style="margin:0;padding-left:18px;line-height:1.9">${g.items.map(x=>`<li class="small" style="color:var(--text)">${x}</li>`).join("")}</ul></div>`; });
+  /* ★ 解法パターン（言語＋非言語の「型」）— 解法暗記の参照用 */
+  const nvset=new Set(NV_CATS);
+  const solBlock=(title,color,arr)=>`<div style="margin:18px 0 0"><div class="meta" style="margin:0 0 7px"><span class="badge" style="background:${color};color:#fff">${title}</span></div><div class="review">`+arr.map(s=>`<div class="ri"><div style="font-weight:700">【${s.c}】</div><div class="small" style="line-height:1.75">${s.h}</div></div>`).join("")+`</div></div>`;
+  html+=solBlock("🧭 言語の解法パターン","#4f8cff",SOLUTIONS.filter(s=>!nvset.has(s.c)));
+  html+=solBlock("🧭 非言語の解法パターン","#0ea5e9",SOLUTIONS.filter(s=>nvset.has(s.c)));
   body.innerHTML=html;
 }
 
@@ -1461,13 +1466,44 @@ function renderSolve(){
   $("#solveBody").querySelectorAll("[data-practice]").forEach(b=>b.onclick=()=>{ const list=ALL.filter(d=>d.c===b.dataset.practice); if(list.length) start(weakOrder(list), true); });
 }
 
-/* ===== フラッシュカード（再生＋方向切替）===== */
-let fdeck=[], fidx=0, frev=false, fshow=false;
+/* ===== 解法パターン（言語＋非言語の「型」を暗記用に集約） ===== */
+const SOLUTIONS=[
+{c:"二語の関係",h:"まず<b>2語の関係の型</b>を判定（同義／対義／包含／役割／原料／用途／全体と部分／並列）。次に選択肢から<b>同じ型</b>のペアを選ぶ。"},
+{c:"熟語の成り立ち",h:"二字熟語の<b>前後の関係</b>を見る。①似た意味 ②反対 ③主語+述語 ④動詞+目的語 ⑤前が後を修飾 の5型に当てはめる。"},
+{c:"同義語",h:"意味の<b>言い換え</b>を考え、最も近い語を選ぶ。共通する漢字もヒント。"},
+{c:"反義語",h:"語を<b>逆向き</b>にした意味の語を探す。増減・往復のような対の語に注目。"},
+{c:"語句の意味",h:"慣用句・四字熟語は<b>本来の意味</b>で覚える（誤用注意：役不足・敷居が高い等）。故事は由来とセットで。"},
+{c:"語句の用法",h:"下線の語を<b>別の具体語に言い換え</b>、同じ言い換えになる選択肢を選ぶ。助詞は『手段／場所／原因』等に置換して判別。"},
+{c:"空欄補充",h:"前後の<b>論理関係</b>を見る。順接=だから／逆接=しかし／換言=つまり／例示=たとえば／添加=しかも／転換=さて。"},
+{c:"並べ替え",h:"<b>接続語・指示語</b>を手がかりに。逆接『しかし』や要約『つまり』は後ろ。指示語(その/これ)がある文は先頭にしない。"},
+{c:"長文",h:"<b>設問を先に読む</b>→探す情報を決めて本文へ。主張は『しかし／だが』の後ろ。<b>本文にない・言い過ぎ</b>の選択肢を切る。"},
+{c:"推論",h:"条件を<b>表・順序・対応図</b>で見える化。順位は不等号で一列。うそつきは仮定して矛盾を探す。"},
+{c:"割合と比",h:"割合=<b>比べる量÷もとにする量</b>。連続割引は掛け算。比は全体をa+bとおく。"},
+{c:"損益算",h:"<b>定価=原価×(1+利益率)</b>、売価=定価×(1−割引率)。複雑なら原価をxとおく。"},
+{c:"速さ",h:"み・は・じ。まず<b>単位をそろえる</b>。出会い=速さの和、追いつき=速さの差。平均速度=総距離÷総時間。"},
+{c:"場合の数",h:"<b>並べる=順列nPr、選ぶ=組合せnCr</b>。『または』=足す、『続けて』=掛ける。"},
+{c:"確率",h:"確率=その場合の数÷全体。<b>『少なくとも1つ』=1−(起きない確率)</b>。"},
+{c:"集合",h:"<b>n(A∪B)=n(A)+n(B)−n(A∩B)</b>。ベン図で両方／片方／どちらでもないを整理。"},
+{c:"食塩水濃度",h:"<b>濃度=食塩÷全体×100</b>、食塩=食塩水×濃度。混ぜても食塩の総量は不変。"},
+{c:"仕事算",h:"全体を1とおく。n日で終わる→1日1/n。<b>協力は1日量を足す</b>。"},
+{c:"平均・資料",h:"平均=合計÷個数。<b>合計=平均×個数</b>で合計を経由して解く。表は合計・差に注目。"},
+{c:"整数・規則性",h:"<b>倍数・余り・等差/等比</b>の規則を探す。等差は a_n=初項+(n−1)×公差。"},
+{c:"料金精算",h:"割り勘・立替は<b>一人あたり=総額÷人数</b>。多く払った人との差額を清算する。"},
+{c:"年齢算",h:"<b>年齢差は何年たっても一定</b>。現在をxとおき『○年後／前』で式を立てる。"},
+{c:"図形",h:"面積・角度の公式と<b>相似比（面積比=相似比の2乗）</b>。補助線で既知の形に分ける。"}
+];
+
+/* ===== フラッシュカード（語彙＋解法／再生＋方向切替）===== */
+let fdeck=[], fidx=0, frev=false, fshow=false, fmode='vocab';
 function buildDeck(){
   const items=[];
-  BANK_SYN.forEach(([w,s])=> items.push(frev? {f:"「"+s+"」と似た意味の語は？", b:w} : {f:"「"+w+"」の類義語は？", b:"≒ "+s}));
-  BANK_ANT.forEach(([w,s])=> items.push(frev? {f:"「"+s+"」と反対の意味の語は？", b:w} : {f:"「"+w+"」の対義語は？", b:"⇔ "+s}));
-  BANK_MEAN.forEach(e=> items.push(frev? {f:"次の意味の語は？\n「"+e.m+"」", b:e.t} : {f:"「"+e.t+"」の意味は？", b:e.m}));
+  if(fmode==='solve'){
+    SOLUTIONS.forEach(s=> items.push({f:"【"+s.c+"】\nこのタイプの解き方・着眼点は？", b:s.h}));
+  } else {
+    BANK_SYN.forEach(([w,s])=> items.push(frev? {f:"「"+s+"」と似た意味の語は？", b:w} : {f:"「"+w+"」の類義語は？", b:"≒ "+s}));
+    BANK_ANT.forEach(([w,s])=> items.push(frev? {f:"「"+s+"」と反対の意味の語は？", b:w} : {f:"「"+w+"」の対義語は？", b:"⇔ "+s}));
+    BANK_MEAN.forEach(e=> items.push(frev? {f:"次の意味の語は？\n「"+e.m+"」", b:e.t} : {f:"「"+e.t+"」の意味は？", b:e.m}));
+  }
   shuffle(items); fdeck=items; fidx=0; fshow=false;
 }
 function openFlash(){ frev=false; buildDeck(); $("#setup").classList.add("hide"); $("#flash").classList.remove("hide"); renderFlash(); window.scrollTo(0,0); }
@@ -1480,15 +1516,17 @@ function renderFlash(){
   const card=fdeck[fidx];
   box.innerHTML=`
     <div class="row" style="margin:0 0 12px">
-      <div class="seg"><button class="${!frev?'on':''}" data-dir="0">語→意味</button><button class="${frev?'on':''}" data-dir="1">意味→語</button></div>
+      <div class="seg"><button class="${fmode==='vocab'?'on':''}" data-mode="vocab">語彙</button><button class="${fmode==='solve'?'on':''}" data-mode="solve">解法</button></div>
+      ${ fmode==='vocab' ? `<div class="seg"><button class="${!frev?'on':''}" data-dir="0">語→意味</button><button class="${frev?'on':''}" data-dir="1">意味→語</button></div>` : '' }
       <span class="small" style="margin-left:auto">${fidx+1} / ${fdeck.length}</span>
     </div>
     <div class="card" style="min-height:130px;display:flex;align-items:center;justify-content:center;text-align:center">
       <div style="font-size:20px;font-weight:700;white-space:pre-wrap;line-height:1.6">${card.f}</div>
     </div>
     ${ fshow
-      ? `<div class="card" style="background:var(--okbg);text-align:center;border-color:var(--ok)"><div style="font-size:19px;font-weight:700">${card.b}</div></div><div class="row"><button class="btn ghost" id="fAgain" style="flex:1">↻ もう一度</button><button class="btn" id="fGot" style="flex:1">✓ 覚えた</button></div>`
+      ? `<div class="card" style="background:var(--okbg);border-color:var(--ok)"><div style="font-size:${fmode==='solve'?'16px':'19px'};font-weight:${fmode==='solve'?'600':'700'};line-height:1.7;text-align:${fmode==='solve'?'left':'center'};white-space:pre-wrap">${card.b}</div></div><div class="row"><button class="btn ghost" id="fAgain" style="flex:1">↻ もう一度</button><button class="btn" id="fGot" style="flex:1">✓ 覚えた</button></div>`
       : `<button class="btn" id="fReveal" style="width:100%">答えを見る（思い出してから）</button>` }`;
+  box.querySelectorAll("[data-mode]").forEach(b=>b.onclick=()=>{ fmode=b.dataset.mode; buildDeck(); renderFlash(); });
   box.querySelectorAll("[data-dir]").forEach(b=>b.onclick=()=>{ frev=b.dataset.dir==="1"; buildDeck(); renderFlash(); });
   if($("#fReveal")) $("#fReveal").onclick=()=>{ fshow=true; renderFlash(); };
   if($("#fGot")) $("#fGot").onclick=()=>{ fidx++; fshow=false; renderFlash(); };
